@@ -27,6 +27,26 @@ portfolio/
 └── README.md                      # Documentazione e guida
 ```
 
+```text
+/www/wwwroot/
+├── default/                    # Cartella default (non in uso)
+├── dev/                        # Ambiente di sviluppo (accesso solo via SSH)
+│   ├── wyrmrest/           # Progetto principale in dev
+│   │   ├── backend/            # Codice Laravel (API, logica, DB)
+│   │   └── frontend/           # Codice Angular (SPA)
+│   └── project_example/        # Progetto figlio di esempio in dev
+│       ├── backend/            # Codice backend di test
+│       └── frontend/           # Codice frontend di test
+└── prod/                       # Ambiente di produzione (accesso libero)
+  ├── wyrmrest.com/           # Progetto principale in prod
+  │   ├── backend/            # Codice Laravel (API, logica, DB)
+  │   └── frontend/           # Codice Angular (SPA)
+  ├── project_example/        # Progetto figlio di esempio in prod
+  │   ├── backend/            # Codice backend di test
+  │   └── frontend/           # Codice frontend di test
+  └── README.md               # Documentazione e guida
+```
+
 ---
 
 ## 🚀 Strategia di deploy generale
