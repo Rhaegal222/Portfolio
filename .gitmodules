@@ -10,3 +10,9 @@
 [submodule "Password-Generator"]
 	path = Password-Generator
 	url = https://github.com/Rhaegal222/Password-Generator.git
+[submodule "vecchiofrancesco.it"]
+	path = vecchiofrancesco.it
+	url = https://github.com/Rhaegal222/vecchiofrancesco.it.git
+[submodule "wyrmrest.com"]
+	path = wyrmrest.com
+	url = https://github.com/Rhaegal222/wyrmrest.com.git
