@@ -126,7 +126,7 @@ server {
     listen 8080;  # Porta per il backend di Wyrmrest
     server_name localhost;
 
-    root /www/wwwroot/dev/wyrmrest.com/wyrmrest_backend/public/index.php;  # Percorso della cartella 'public' di Laravel
+    root /www/wwwroot/dev/wyrmrest.com/wyrmrest_backend/public;  # Percorso della cartella 'public' di Laravel
 
     index index.php index.html index.htm;
 
@@ -173,32 +173,6 @@ server {
     # File di log per Kraken
     access_log /www/wwwlogs/kraken-access.log;
     error_log /www/wwwlogs/kraken-error.log;
-}
-
-
-# ------------------------------------------
-# Configurazione Server per l'ambiente di produzione (wyrmrest.com)
-# ------------------------------------------
-server {
-    listen 80;
-    server_name wyrmrest.com;
-    root /www/wwwroot/prod/wyrmrest.com;
-
-    # Gestisci file statici per Angular (SPA)
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-
-    location ~ \.php$ {
-        fastcgi_pass unix:/run/php/php8.2-fpm.sock;  # Assicurati che la versione di PHP sia corretta
-        fastcgi_index index.php;
-        include fastcgi_params;
-        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-    }
-
-    # Log per questo server
-    access_log /www/wwwlogs/prod-access.log;
-    error_log /www/wwwlogs/prod-error.log;
 }
 
 # ------------------------------------------
