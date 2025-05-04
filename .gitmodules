@@ -1,0 +1,9 @@
+[submodule "Kraken-Restaurant"]
+	path = Kraken-Restaurant
+	url = https://github.com/Rhaegal222/Kraken-Restaurant.git
+[submodule "RouterRecon"]
+	path = RouterRecon
+	url = https://github.com/Rhaegal222/RouterRecon.git
+[submodule "WyrmrestProject"]
+	path = WyrmrestProject
+	url = https://github.com/Rhaegal222/WyrmrestProject.git
