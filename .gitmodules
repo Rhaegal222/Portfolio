@@ -4,9 +4,6 @@
 [submodule "RouterRecon"]
 	path = RouterRecon
 	url = https://github.com/Rhaegal222/RouterRecon.git
-[submodule "WyrmrestProject"]
-	path = WyrmrestProject
-	url = https://github.com/Rhaegal222/WyrmrestProject.git
 [submodule "Password-Generator"]
 	path = Password-Generator
 	url = https://github.com/Rhaegal222/Password-Generator.git
