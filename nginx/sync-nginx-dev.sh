@@ -34,6 +34,12 @@ echo -e "\n🔗 Ricreo symlink da sites-available a sites-enabled..."
 SITES_AVAILABLE="$NGINX_BASE/sites-available"
 SITES_ENABLED="$NGINX_BASE/sites-enabled"
 
+# Crea sites-enabled se non esiste
+if [ ! -d "$SITES_ENABLED" ]; then
+    echo "📂 Creo cartella missing: $SITES_ENABLED"
+    sudo mkdir -p "$SITES_ENABLED"
+fi
+
 # Pulisce i vecchi symlink
 sudo rm -f "$SITES_ENABLED"/*.conf
 
