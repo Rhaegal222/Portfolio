@@ -14,7 +14,7 @@ else
 fi
 
 # Cartelle da sincronizzare
-FOLDERS=("conf.d" "snippets" "sites-available" "sites-enabled")
+FOLDERS=("conf.d" "snippets" "sites-available")
 
 echo "🔄 Avvio sincronizzazione delle cartelle da '$DEV_BASE' a '$NGINX_BASE'..."
 
@@ -29,7 +29,23 @@ for dir in "${FOLDERS[@]}"; do
     fi
 done
 
-echo "✅ Sincronizzazione completata."
+# Ricrea i symlink per sites-enabled
+echo -e "\n🔗 Ricreo symlink da sites-available a sites-enabled..."
+SITES_AVAILABLE="$NGINX_BASE/sites-available"
+SITES_ENABLED="$NGINX_BASE/sites-enabled"
+
+# Pulisce i vecchi symlink
+sudo rm -f "$SITES_ENABLED"/*.conf
+
+# Ricrea symlink solo per file .conf
+for file in "$SITES_AVAILABLE"/*.conf; do
+    if [ -f "$file" ]; then
+        sudo ln -s "$file" "$SITES_ENABLED/$(basename "$file")"
+        echo "➕ Linkato $(basename "$file")"
+    fi
+done
+
+echo "✅ Symlink aggiornati."
 
 # Test configurazione
 echo -e "\n🔍 Verifica configurazione Nginx..."
