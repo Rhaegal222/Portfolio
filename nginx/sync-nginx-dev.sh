@@ -14,7 +14,7 @@ else
 fi
 
 # Cartelle da sincronizzare
-FOLDERS=("conf.d" "snippets" "sites-available")
+FOLDERS=("conf.d" "snippets" "sites-available/dev")
 
 echo "🔄 Avvio sincronizzazione delle cartelle da '$DEV_BASE' a '$NGINX_BASE'..."
 
@@ -29,12 +29,12 @@ for dir in "${FOLDERS[@]}"; do
     fi
 done
 
-# Ricrea i symlink per sites-enabled
-echo -e "\n🔗 Ricreo symlink da sites-available a sites-enabled..."
-SITES_AVAILABLE="$NGINX_BASE/sites-available"
-SITES_ENABLED="$NGINX_BASE/sites-enabled"
+# Ricrea i symlink per sites-enabled/dev
+echo -e "\n🔗 Ricreo symlink da sites-available/dev a sites-enabled/dev..."
+SITES_AVAILABLE="$NGINX_BASE/sites-available/dev"
+SITES_ENABLED="$NGINX_BASE/sites-enabled/dev"
 
-# Crea sites-enabled se non esiste
+# Crea la cartella se non esiste
 if [ ! -d "$SITES_ENABLED" ]; then
     echo "📂 Creo cartella missing: $SITES_ENABLED"
     sudo mkdir -p "$SITES_ENABLED"
