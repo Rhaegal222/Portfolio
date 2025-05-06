@@ -91,6 +91,11 @@ composer install --no-dev --optimize-autoloader --no-interaction
 echo "🔑 Generazione APP_KEY"
 php artisan key:generate --ansi --quiet
 
+# Imposta permessi corretti
+echo "🔐 Correzione permessi storage/ e bootstrap/cache/"
+sudo chown -R www:www storage bootstrap/cache
+sudo chmod -R 775 storage bootstrap/cache
+
 # --- Fine ---
 
 echo "✅ Deploy ($MODE) simulato pronto in $DEPLOY_ROOT"

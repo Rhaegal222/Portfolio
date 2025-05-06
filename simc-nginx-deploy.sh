@@ -85,21 +85,23 @@ server {
     }
 
     location /api {
-        root $WWWROOT_BASE/$PROJECT_NAME/backend/public;
+        alias $WWWROOT_BASE/$PROJECT_NAME/backend/public/;
         index index.php;
         try_files \$uri \$uri/ /index.php?\$query_string;
+    }
 
-        location ~ \.php\$ {
-            include fastcgi_params;
-            fastcgi_pass unix:$PHP_SOCK;
-            fastcgi_index index.php;
-            fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
-        }
+    location ~ ^/api/.*\.php\$ {
+        alias $WWWROOT_BASE/$PROJECT_NAME/backend/public/;
+        include fastcgi_params;
+        fastcgi_pass unix:$PHP_SOCK;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME \$request_filename;
     }
 
     access_log $LOGS_DIR/${MODE}_${PROJECT_NAME}_access.log;
     error_log  $LOGS_DIR/${MODE}_${PROJECT_NAME}_error.log;
 }
+
 EOF
 
 # Symlink
