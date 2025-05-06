@@ -2,7 +2,7 @@
 
 # simc-nginx-deploy.sh
 # Simula il deploy NGINX in locale tramite la struttura in deploy/www
-# Non tocca il server reale: lavora solo in deploy/www
+# Genera file .conf già pronti per la produzione (path reali)
 
 set -e
 
@@ -11,29 +11,36 @@ if [[ "$1" != "-dev" && "$1" != "-prod" ]]; then
   echo "❌ Uso: $0 -dev|-prod"
   exit 1
 fi
-MODE=${1#-}   # estrae dev o prod
+MODE=${1#-}
 shift
 
-# Percorsi di simulazione (solo deploy)
+# Percorsi
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 DEPLOY_ROOT="$SCRIPT_DIR/deploy/www"
 DEV_BASE="$DEPLOY_ROOT/server/nginx/conf"
-WWWROOT_BASE="$DEPLOY_ROOT/wwwroot/$MODE"
-LOGS_DIR="$DEPLOY_ROOT/logs"
+WWWROOT_BASE="/www/wwwroot/$MODE"
+LOGS_DIR="/www/wwwlogs"
 
-# Rileva il progetto (primo sotto-dir in wwwroot/$MODE)
-PROJECT_NAME=$(find "$WWWROOT_BASE" -mindepth 1 -maxdepth 1 -type d | head -n1 | xargs -n1 basename)
-if [ -z "$PROJECT_NAME" ]; then
-  echo "❌ Nessun progetto trovato in $WWWROOT_BASE"
+# Socket PHP-FPM dinamico (prende il primo da PHP 8.2)
+PHP_SOCK=$(find /www/server/php/ -type s -name "*.sock" 2>/dev/null | grep php8.2 | head -n1)
+if [ -z "$PHP_SOCK" ] || [ ! -S "$PHP_SOCK" ]; then
+  echo "❌ Socket PHP-FPM non trovato o non valido"
   exit 1
 fi
 
-# Trova porte libere per frontend e backend
+
+# Rileva progetto
+LOCAL_WWWROOT="$DEPLOY_ROOT/wwwroot/$MODE"
+PROJECT_NAME=$(find "$LOCAL_WWWROOT" -mindepth 1 -maxdepth 1 -type d | head -n1 | xargs -n1 basename)
+if [ -z "$PROJECT_NAME" ]; then
+  echo "❌ Nessun progetto trovato in $LOCAL_WWWROOT"
+  exit 1
+fi
+
+# Porte libere
 test_port() {
   local p=$1
-  while lsof -iTCP:$p -sTCP:LISTEN >/dev/null 2>&1; do
-    ((p++))
-  done
+  while lsof -iTCP:$p -sTCP:LISTEN >/dev/null 2>&1; do ((p++)); done
   echo $p
 }
 FRONT_PORT=$(test_port 8080)
@@ -41,15 +48,15 @@ BACK_PORT=$(test_port 8000)
 
 echo "🔧 [SIM $MODE] ports -> frontend: http://localhost:$FRONT_PORT/, backend: http://localhost:$BACK_PORT/"
 
-# Percorsi vhost nella struttura deploy
-SITES_AVAIL_DEV="$DEV_BASE/sites-available/$MODE"
-SITES_ENABLED_DEV="$DEV_BASE/sites-enabled/$MODE"
-VHOST_FILE="$SITES_AVAIL_DEV/$PROJECT_NAME.conf"
+# Percorsi vhost
+SITES_AVAIL="$DEV_BASE/sites-available/$MODE"
+SITES_ENABLED="$DEV_BASE/sites-enabled/$MODE"
+VHOST_FILE="$SITES_AVAIL/$PROJECT_NAME.conf"
 
-# Crea directory deploy (senza sudo)
-mkdir -p "$DEV_BASE/conf.d" "$SITES_AVAIL_DEV" "$SITES_ENABLED_DEV" "$LOGS_DIR"
+# Crea struttura
+mkdir -p "$DEV_BASE/conf.d" "$SITES_AVAIL" "$SITES_ENABLED"
 
-# Genera proxy_params.conf di default se manca
+# proxy_params.conf
 if [ ! -f "$DEV_BASE/conf.d/proxy_params.conf" ]; then
   cat > "$DEV_BASE/conf.d/proxy_params.conf" <<'EOF'
 # proxy_params.conf
@@ -63,14 +70,14 @@ EOF
   echo "⚙️  [SIM] Generato $DEV_BASE/conf.d/proxy_params.conf"
 fi
 
-# Genera vhost simulato
+# Vhost .conf
 echo "⚙️  [SIM] Creo vhost in $VHOST_FILE"
 cat > "$VHOST_FILE" <<EOF
 server {
     listen $FRONT_PORT default_server;
     server_name _;
 
-    root $WWWROOT_BASE/$PROJECT_NAME/frontend;
+    root $WWWROOT_BASE/$PROJECT_NAME/frontend/browser;
     index index.html;
 
     location / {
@@ -78,17 +85,25 @@ server {
     }
 
     location /api {
-        proxy_pass http://127.0.0.1:$BACK_PORT;
-        include conf.d/proxy_params.conf;
+        root $WWWROOT_BASE/$PROJECT_NAME/backend/public;
+        index index.php;
+        try_files \$uri \$uri/ /index.php?\$query_string;
+
+        location ~ \.php\$ {
+            include fastcgi_params;
+            fastcgi_pass unix:$PHP_SOCK;
+            fastcgi_index index.php;
+            fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+        }
     }
 
-    access_log $LOGS_DIR/${MODE}_access.log;
-    error_log  $LOGS_DIR/${MODE}_error.log;
+    access_log $LOGS_DIR/${MODE}_${PROJECT_NAME}_access.log;
+    error_log  $LOGS_DIR/${MODE}_${PROJECT_NAME}_error.log;
 }
 EOF
 
-# Abilita il vhost tramite symlink
-rm -f "$SITES_ENABLED_DEV"/*.conf
-ln -s "$VHOST_FILE" "$SITES_ENABLED_DEV/$PROJECT_NAME.conf"
+# Symlink
+rm -f "$SITES_ENABLED"/*.conf
+ln -s "$VHOST_FILE" "$SITES_ENABLED/$PROJECT_NAME.conf"
 
 echo "✅ [SIM $MODE] Deploy NGINX simulato pronto in $DEV_BASE"
