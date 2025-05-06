@@ -38,12 +38,11 @@ for dir in "${DIRS[@]}"; do
     sudo mkdir -p "$DEST"
   fi
 
-  if [ -d "$SRC" ]; then
-    echo "🔄 Sync $dir"
-    sudo rsync -av --delete "$SRC/" "$DEST/"
-  else
-    echo "⚠️  $SRC non trovato, skip"
-  fi
+  if [ ! -d "$SRC" ]; then
+  echo "⚠️  $SRC non trovato, lo creo vuoto"
+  sudo mkdir -p "$SRC"
+  sudo touch "$SRC/.placeholder"
+fi
 done
 
 # Ricrea i symlink per sites-enabled/{dev,prod}
