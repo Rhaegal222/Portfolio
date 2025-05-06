@@ -84,24 +84,14 @@ server {
         try_files \$uri \$uri/ /index.html;
     }
 
-    location /api {
-        alias $WWWROOT_BASE/$PROJECT_NAME/backend/public/;
-        index index.php;
-        try_files \$uri \$uri/ /index.php?\$query_string;
+    location /api/ {
+        proxy_pass http://127.0.0.1:$BACK_PORT/;
+        include conf.d/proxy_params.conf;
     }
-
-    location ~ ^/api/.*\.php\$ {
-        alias $WWWROOT_BASE/$PROJECT_NAME/backend/public/;
-        include fastcgi_params;
-        fastcgi_pass unix:$PHP_SOCK;
-        fastcgi_index index.php;
-        fastcgi_param SCRIPT_FILENAME \$request_filename;
-    }
-
+    
     access_log $LOGS_DIR/${MODE}_${PROJECT_NAME}_access.log;
     error_log  $LOGS_DIR/${MODE}_${PROJECT_NAME}_error.log;
 }
-
 EOF
 
 # Symlink
