@@ -27,6 +27,12 @@ echo "🔍 Verifica configurazione nginx..."
 sudo /www/server/nginx/sbin/nginx -t
 
 echo "🔁 Ricarico nginx..."
-sudo /www/server/nginx/sbin/nginx -s reload
+if [ ! -s /www/server/nginx/logs/nginx.pid ]; then
+  echo "⚙️ Avvio nginx (DEV)..."
+  sudo /www/server/nginx/sbin/nginx
+else
+  echo "🔁 Ricarico nginx (DEV)..."
+  sudo /www/server/nginx/sbin/nginx -s reload
+fi
 
 echo "✅ Deploy Nginx PRODUCTION completato."

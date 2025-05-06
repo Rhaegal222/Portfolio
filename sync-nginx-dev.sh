@@ -110,7 +110,13 @@ echo "🔍 Test configurazione nginx (DEV)..."
 sudo /www/server/nginx/sbin/nginx -t
 
 echo "🔁 Ricarico nginx (DEV)..."
-sudo /www/server/nginx/sbin/nginx -s reload
+if [ ! -s /www/server/nginx/logs/nginx.pid ]; then
+  echo "⚙️ Avvio nginx (DEV)..."
+  sudo /www/server/nginx/sbin/nginx
+else
+  echo "🔁 Ricarico nginx (DEV)..."
+  sudo /www/server/nginx/sbin/nginx -s reload
+fi
 
 # Mostra URL
 HOST_IP=$(hostname -I | awk '{print $1}')
