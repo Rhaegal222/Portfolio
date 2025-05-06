@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-DEV_BASE=/www/wwwroot/dev/nginx
-NGINX_BASE=/www/server/nginx/conf
+DEV_BASE="/www/wwwroot/server/dev/nginx"
+NGINX_BASE="/www/server/nginx/conf"
 
 echo "📄 Sync nginx.conf..."
 if [ -f "$DEV_BASE/nginx.conf" ]; then

@@ -120,4 +120,4 @@ fi
 
 # Mostra URL
 HOST_IP=$(hostname -I | awk '{print $1}')
-echo "✅ DEV live: http://localhost:$FRONT_PORT/"
+echo "✅ DEV live: Frontend - http://localhost:$FRONT_PORT/, Backend - http://localhost:$BACK_PORT/"
