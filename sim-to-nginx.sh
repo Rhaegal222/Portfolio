@@ -3,7 +3,8 @@
 # sim-sync-to-nginx.sh
 # Sincronizza la struttura simulata da deploy/www su NGINX reale gestito da aaPanel
 
-set -e
+set -euo pipefail
+trap 'echo "Errore rilevato al comando: $BASH_COMMAND. Uscita." >&2' ERR
 
 # Percorsi
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
@@ -16,6 +17,8 @@ DIRS=(
   snippets
   sites-available/dev
   sites-available/prod
+  sites-enabled/dev
+  sites-enabled/prod
 )
 
 # Copia nginx.conf principale se esiste nella simulazione
@@ -28,26 +31,41 @@ fi
 for dir in "${DIRS[@]}"; do
   SRC="$DEPLOY_CONF_BASE/$dir"
   DEST="$NGINX_CONF_BASE/$dir"
+
+  # Se la directory di destinazione non esiste, creala
+  if [ ! -d "$DEST" ]; then
+    echo "📂 Directory $DEST non esistente, creazione..."
+    sudo mkdir -p "$DEST"
+  fi
+
   if [ -d "$SRC" ]; then
     echo "🔄 Sync $dir"
     sudo rsync -av --delete "$SRC/" "$DEST/"
   else
     echo "⚠️  $SRC non trovato, skip"
   fi
-
 done
 
 # Ricrea i symlink per sites-enabled/{dev,prod}
 for MODE in dev prod; do
   SA="$NGINX_CONF_BASE/sites-available/$MODE"
   SE="$NGINX_CONF_BASE/sites-enabled/$MODE"
-  echo "🔗 Ricreo symlink per $MODE"
-  sudo mkdir -p "$SE"
-  sudo rm -f "$SE"/*.conf
-  for f in "$SA"/*.conf; do
-    [ -f "$f" ] && sudo ln -s "$f" "$SE/$(basename "$f")"
-  done
 
+  echo "🔗 Ricreo symlink per $MODE"
+
+  # Assicurati che la directory di sites-enabled esista
+  if [ ! -d "$SE" ]; then
+    sudo mkdir -p "$SE"
+  fi
+
+  # Rimuove tutti i symlink/vecchi file .conf nella directory di sites-enabled
+  sudo rm -f "$SE"/*.conf
+
+  for f in "$SA"/*.conf; do
+    if [ -f "$f" ]; then
+      sudo ln -s "$f" "$SE/$(basename "$f")"
+    fi
+  done
 done
 
 # Verifica configurazione
