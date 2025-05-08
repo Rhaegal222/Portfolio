@@ -47,16 +47,17 @@ fi
 echo -e "    ➤ Progetto: $PROJECT_NAME"
 
 # --- 🔁 STEP 4: Sincronizza configurazione NGINX ---
-echo -e "\n🔁 \e[1;33mSTEP 4:\e[0m Sync configurazione NGINX"
-for dir in conf.d snippets \
-           "sites-available/$MODE" \
-           "sites-enabled/$MODE"; do
+# --- 🔁 STEP 4: Sincronizza configurazione NGINX ---
+echo -e "\n🔁 \e[1;33mSTEP 4:\e[0m Sync configurazione NGINX (solo file del progetto corrente)"
+for dir in conf.d snippets "sites-available/$MODE"; do
   SRC_DIR="$CONF_SRC/$dir"
   DEST_DIR="$CONF_DEST/$dir"
   echo -e "    • $dir"
   sudo mkdir -p "$DEST_DIR"
   if [[ -d "$SRC_DIR" ]]; then
-    sudo rsync -av --delete "$SRC_DIR/" "$DEST_DIR/"
+    for file in "$SRC_DIR"/*.conf; do
+      [[ -f "$file" ]] && sudo cp "$file" "$DEST_DIR/"
+    done
   fi
 done
 
@@ -68,30 +69,39 @@ if [[ -f "$CONF_SRC/nginx.conf" ]]; then
 fi
 
 # --- 🔗 STEP 6: Rigenera symlink in sites-enabled ---
-echo -e "\n🔗 \e[1;33mSTEP 6:\e[0m Rigenero symlink in sites-enabled/$MODE"
+# --- 🔗 STEP 6: Rigenera symlink in sites-enabled ---
+echo -e "\n🔗 \e[1;33mSTEP 6:\e[0m Aggiorno symlink per $PROJECT_NAME in sites-enabled/$MODE"
 SA="$CONF_DEST/sites-available/$MODE"
 SE="$CONF_DEST/sites-enabled/$MODE"
+SA_CONF="$SA/$PROJECT_NAME.conf"
+SE_CONF="$SE/$PROJECT_NAME.conf"
 sudo mkdir -p "$SE"
-sudo rm -f "$SE"/*.conf
-for f in "$SA"/*.conf; do
-  [[ -f "$f" ]] && sudo ln -s "$f" "$SE/$(basename "$f")"
-done
+if [[ -f "$SA_CONF" ]]; then
+  sudo rm -f "$SE_CONF"
+  sudo ln -s "$SA_CONF" "$SE_CONF"
+  echo -e "    ➤ Symlink aggiornato: $SE_CONF"
+else
+  echo -e "❌ \e[1;31mErrore:\e[0m File $SA_CONF non trovato"
+  exit 1
+fi
 
-# --- 🌍 STEP 7: Deploy codice wwwroot ---
-echo -e "\n🌍 \e[1;33mSTEP 7:\e[0m Deploy codice in $WWW_DEST"
-sudo mkdir -p "$WWW_DEST"
-sudo rsync -av --delete "$WWW_SRC/" "$WWW_DEST/"
-echo -e "    ➤ Codice deployato in $WWW_DEST/$PROJECT_NAME"
+# --- 🌍 STEP 7: Deploy solo il progetto, non rimpiazza gli altri ---
+echo -e "\n🌍 \e[1;33mSTEP 7:\e[0m Deploy progetto $PROJECT_NAME in $WWW_DEST"
+PROJECT_SRC="$WWW_SRC/$PROJECT_NAME"
+PROJECT_DEST="$WWW_DEST/$PROJECT_NAME"
+sudo mkdir -p "$PROJECT_DEST"
+sudo rsync -av --delete "$PROJECT_SRC/" "$PROJECT_DEST/"
+echo -e "    ➤ Codice deployato in $PROJECT_DEST"
 
-# --- 🗝️ STEP 8: Copia file .env corretto ---
-echo -e "\n🗝️ \e[1;33mSTEP 8:\e[0m Sposto file .env in backend"
-SRC_ENV="$WWW_SRC/$PROJECT_NAME/backend/.env"
-DEST_BACKEND="$WWW_DEST/$PROJECT_NAME/backend"
+# --- 🗝️ STEP 8: Copia file .env in backend ---
+echo -e "\n🗝️ \e[1;33mSTEP 8:\e[0m Copio .env nel backend"
+SRC_ENV="$PROJECT_SRC/backend/.env"
+DEST_BACKEND="$PROJECT_DEST/backend"
 if [[ -f "$SRC_ENV" ]]; then
   sudo cp "$SRC_ENV" "$DEST_BACKEND/.env"
   echo -e "    ➤ .env copiato in $DEST_BACKEND"
 else
-  echo -e "❌ \e[1;31mErrore:\e[0m File .env non trovato in $SRC_ENV" >&2
+  echo -e "❌ \e[1;31mErrore:\e[0m .env non trovato in $SRC_ENV" >&2
   exit 1
 fi
 

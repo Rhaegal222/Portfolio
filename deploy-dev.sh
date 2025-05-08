@@ -8,7 +8,12 @@
 
 set -euo pipefail
 
-PROJECT="wyrmrest.com"
+# --- Verifica parametro progetto ---
+if [[ -z "${1:-}" ]]; then
+  echo "❌ Uso corretto: $0 <nome_progetto>"
+  exit 1
+fi
+PROJECT="$1"
 
 echo "🧹 Rimuovo struttura deploy esistente..."
 sudo rm -rf ./deploy/www
