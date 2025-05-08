@@ -60,7 +60,7 @@ for dir in conf.d snippets \
   fi
 done
 
-# Copia nginx.conf principale
+# --- 📄 STEP 5: Copia nginx.conf principale ---
 echo -e "\n📄 \e[1;33mSTEP 5:\e[0m Copio nginx.conf principale"
 if [[ -f "$CONF_SRC/nginx.conf" ]]; then
   sudo cp "$CONF_SRC/nginx.conf" "$CONF_DEST/nginx.conf"
@@ -77,22 +77,28 @@ for f in "$SA"/*.conf; do
   [[ -f "$f" ]] && sudo ln -s "$f" "$SE/$(basename "$f")"
 done
 
-echo -e "\n🌍 \e[1;33mSTEP 7:\e[0m Deploy codice wwwroot"
+# --- 🌍 STEP 7: Deploy codice wwwroot ---
+echo -e "\n🌍 \e[1;33mSTEP 7:\e[0m Deploy codice in $WWW_DEST"
 sudo mkdir -p "$WWW_DEST"
 sudo rsync -av --delete "$WWW_SRC/" "$WWW_DEST/"
+echo -e "    ➤ Codice deployato in $WWW_DEST/$PROJECT_NAME"
 
-# --- 📄 STEP 8: Verifica log esistenza ---
-echo -e "\n📄 \e[1;33mSTEP 8:\e[0m Verifica e crea file di log"
+# --- 🔑 STEP 8: Generazione chiave Laravel ---
+echo -e "\n🔑 \e[1;33mSTEP 8:\e[0m Generazione APP_KEY in backend"
+bash -c "cd '$WWW_DEST/$PROJECT_NAME/backend' && php artisan key:generate --ansi --quiet"
+
+# --- 📄 STEP 9: Verifica log esistenza ---
+echo -e "\n📄 \e[1;33mSTEP 9:\e[0m Verifica e crea file di log"
 sudo mkdir -p "$LOGS_DEST"
 sudo touch "$LOGS_DEST/${MODE}_${PROJECT_NAME}_access.log" \
            "$LOGS_DEST/${MODE}_${PROJECT_NAME}_error.log"
 
-# --- 🔍 STEP 9: Verifica e ricarica NGINX ---
-echo -e "\n🔍 \e[1;33mSTEP 9:\e[0m Verifico configurazione NGINX"
+# --- 🔍 STEP 10: Verifica e ricarica NGINX ---
+echo -e "\n🔍 \e[1;33mSTEP 10:\e[0m Verifico configurazione NGINX"
 sudo /www/server/nginx/sbin/nginx -t
 
-echo -e "🔁 \e[1;33mSTEP 10:\e[0m Ricarico NGINX"
+echo -e "🔁 \e[1;33mSTEP 11:\e[0m Ricarico NGINX"
 sudo /www/server/nginx/sbin/nginx -s reload
 
-# --- ✅ STEP 11: Completamento ---
-echo -e "\n✅ \e[1;32mSTEP 11:\e[0m Produzione '$MODE' aggiornata per '$PROJECT_NAME'"
+# --- ✅ STEP 12: Completamento ---
+echo -e "\n✅ \e[1;32mSTEP 12:\e[0m Produzione '$MODE' aggiornata per '$PROJECT_NAME'"
