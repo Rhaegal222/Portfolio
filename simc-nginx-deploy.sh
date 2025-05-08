@@ -74,23 +74,41 @@ fi
 echo "⚙️  [SIM] Creo vhost in $VHOST_FILE"
 cat > "$VHOST_FILE" <<EOF
 server {
-    listen $FRONT_PORT default_server;
-    server_name _;
-
-    root $WWWROOT_BASE/$PROJECT_NAME/frontend/browser;
-    index index.html;
+    listen       $FRONT_PORT;
+    listen       [::]:$FRONT_PORT;
+    server_name  _;
+    root         $WWWROOT_BASE/$PROJECT_NAME/frontend/browser;
+    index        index.html;
 
     location / {
-        try_files \$uri \$uri/ /index.html;
+        try_files $uri $uri/ /index.html;
     }
 
-    location /api/ {
-        proxy_pass http://127.0.0.1:$BACK_PORT/;
-        include conf.d/proxy_params.conf;
+    access_log  $LOGS_DIR/${MODE}_${PROJECT_NAME}_front_access.log;
+    error_log   $LOGS_DIR/${MODE}_${PROJECT_NAME}_front_error.log;
+}
+
+# 2) Back-end PHP/Laravel
+server {
+    listen       $BACK_PORT;
+    listen       [::]:$BACK_PORT;
+    server_name  _;
+    root         $WWWROOT_BASE/$PROJECT_NAME/backend/public;
+    index        index.php;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
     }
-    
-    access_log $LOGS_DIR/${MODE}_${PROJECT_NAME}_access.log;
-    error_log  $LOGS_DIR/${MODE}_${PROJECT_NAME}_error.log;
+
+    location ~ \.php$ {
+      fastcgi_pass unix:/www/server/php/82/var/run/php8.2-fpm.sock;
+      fastcgi_param SCRIPT_FILENAME $WWWROOT_BASE/$PROJECT_NAME/backend/public/index.php;
+      include fastcgi_params;
+      fastcgi_hide_header X-Powered-By;
+    }
+
+    access_log  $LOGS_DIR/${MODE}_${PROJECT_NAME}_api_access.log;
+    error_log   $LOGS_DIR/${MODE}_${PROJECT_NAME}_api_error.log;
 }
 EOF
 
