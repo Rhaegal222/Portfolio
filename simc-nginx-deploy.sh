@@ -18,46 +18,42 @@ shift
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 DEPLOY_ROOT="$SCRIPT_DIR/deploy/www"
 DEV_BASE="$DEPLOY_ROOT/server/nginx/conf"
-WWWROOT_BASE="/www/wwwroot/$MODE"
+LOCAL_WWWROOT="$DEPLOY_ROOT/wwwroot/$MODE"
 LOGS_DIR="/www/wwwlogs"
 
 # Socket PHP-FPM dinamico (prende il primo da PHP 8.2)
 PHP_SOCK=$(find /www/server/php/ -type s -name "*.sock" 2>/dev/null | grep php8.2 | head -n1)
-if [ -z "$PHP_SOCK" ] || [ ! -S "$PHP_SOCK" ]; then
+if [[ -z "$PHP_SOCK" || ! -S "$PHP_SOCK" ]]; then
   echo "❌ Socket PHP-FPM non trovato o non valido"
   exit 1
 fi
 
-
 # Rileva progetto
-LOCAL_WWWROOT="$DEPLOY_ROOT/wwwroot/$MODE"
 PROJECT_NAME=$(find "$LOCAL_WWWROOT" -mindepth 1 -maxdepth 1 -type d | head -n1 | xargs -n1 basename)
-if [ -z "$PROJECT_NAME" ]; then
+if [[ -z "$PROJECT_NAME" ]]; then
   echo "❌ Nessun progetto trovato in $LOCAL_WWWROOT"
   exit 1
 fi
 
-# Porte libere
-test_port() {
+# Trova porte libere
+find_free_port(){
   local p=$1
   while lsof -iTCP:$p -sTCP:LISTEN >/dev/null 2>&1; do ((p++)); done
   echo $p
 }
-FRONT_PORT=$(test_port 8080)
-BACK_PORT=$(test_port 8000)
+FRONT_PORT=$(find_free_port 8080)
+BACK_PORT=$(find_free_port 8000)
 
-echo "🔧 [SIM $MODE] ports -> frontend: http://localhost:$FRONT_PORT/, backend: http://localhost:$BACK_PORT/"
+echo "🔧 [SIM $MODE] frontend -> http://localhost:$FRONT_PORT/"
+echo "🔧 [SIM $MODE] backend  -> http://localhost:$BACK_PORT/"
 
 # Percorsi vhost
 SITES_AVAIL="$DEV_BASE/sites-available/$MODE"
 SITES_ENABLED="$DEV_BASE/sites-enabled/$MODE"
-VHOST_FILE="$SITES_AVAIL/$PROJECT_NAME.conf"
-
-# Crea struttura
 mkdir -p "$DEV_BASE/conf.d" "$SITES_AVAIL" "$SITES_ENABLED"
 
 # proxy_params.conf
-if [ ! -f "$DEV_BASE/conf.d/proxy_params.conf" ]; then
+if [[ ! -f "$DEV_BASE/conf.d/proxy_params.conf" ]]; then
   cat > "$DEV_BASE/conf.d/proxy_params.conf" <<'EOF'
 # proxy_params.conf
 proxy_http_version 1.1;
@@ -67,44 +63,55 @@ proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
 proxy_set_header   X-Forwarded-Proto $scheme;
 proxy_redirect     off;
 EOF
-  echo "⚙️  [SIM] Generato $DEV_BASE/conf.d/proxy_params.conf"
+  echo "⚙️  [SIM] Generato proxy_params.conf"
 fi
 
+# … tutto quanto sopra resta identico …
+
 # Vhost .conf
-echo "⚙️  [SIM] Creo vhost in $VHOST_FILE"
+VHOST_FILE="$SITES_AVAIL/$PROJECT_NAME.conf"
 cat > "$VHOST_FILE" <<EOF
 server {
     listen       $FRONT_PORT;
     listen       [::]:$FRONT_PORT;
     server_name  _;
-    root         $WWWROOT_BASE/$PROJECT_NAME/frontend/browser;
+    root         $LOCAL_WWWROOT/$PROJECT_NAME/frontend/browser;
     index        index.html;
 
     location / {
-        try_files $uri $uri/ /index.html;
+        try_files \$uri \$uri/ /index.html;
     }
 
     access_log  $LOGS_DIR/${MODE}_${PROJECT_NAME}_front_access.log;
     error_log   $LOGS_DIR/${MODE}_${PROJECT_NAME}_front_error.log;
 }
 
-# 2) Back-end PHP/Laravel
 server {
     listen       $BACK_PORT;
     listen       [::]:$BACK_PORT;
     server_name  _;
-    root         $WWWROOT_BASE/$PROJECT_NAME/backend/public;
+    root         $LOCAL_WWWROOT/$PROJECT_NAME/backend/public;
     index        index.php;
 
+    charset utf-8;
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header X-Content-Type-Options "nosniff";
+
     location / {
-        try_files $uri $uri/ /index.php?$query_string;
+        try_files \$uri \$uri/ /index.php?\$query_string;
     }
 
-    location ~ \.php$ {
-      fastcgi_pass unix:/www/server/php/82/var/run/php8.2-fpm.sock;
-      fastcgi_param SCRIPT_FILENAME $WWWROOT_BASE/$PROJECT_NAME/backend/public/index.php;
-      include fastcgi_params;
-      fastcgi_hide_header X-Powered-By;
+    error_page 404 /index.php;
+
+    location ~ ^/index\\.php(/|\$) {
+        fastcgi_pass   unix:$PHP_SOCK;
+        fastcgi_param  SCRIPT_FILENAME $LOCAL_WWWROOT/$PROJECT_NAME/backend/public/index.php;
+        include         fastcgi_params;
+        fastcgi_hide_header X-Powered-By;
+    }
+
+    location ~ /\\.(?!well-known).* {
+        deny all;
     }
 
     access_log  $LOGS_DIR/${MODE}_${PROJECT_NAME}_api_access.log;
@@ -116,4 +123,4 @@ EOF
 rm -f "$SITES_ENABLED"/*.conf
 ln -s "$VHOST_FILE" "$SITES_ENABLED/$PROJECT_NAME.conf"
 
-echo "✅ [SIM $MODE] Deploy NGINX simulato pronto in $DEV_BASE"
+echo "✅ [SIM $MODE] Vhost generato in $SITES_AVAIL"
