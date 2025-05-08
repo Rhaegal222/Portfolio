@@ -83,13 +83,13 @@ sudo mkdir -p "$WWW_DEST"
 sudo rsync -av --delete "$WWW_SRC/" "$WWW_DEST/"
 echo -e "    ➤ Codice deployato in $WWW_DEST/$PROJECT_NAME"
 
-# --- 🗝️ STEP 8: Sposta file .env in backend ---
+# --- 🗝️ STEP 8: Copia file .env corretto ---
 echo -e "\n🗝️ \e[1;33mSTEP 8:\e[0m Sposto file .env in backend"
 SRC_ENV="$WWW_SRC/$PROJECT_NAME/backend/.env"
 DEST_BACKEND="$WWW_DEST/$PROJECT_NAME/backend"
 if [[ -f "$SRC_ENV" ]]; then
-  sudo mv "$SRC_ENV" "$DEST_BACKEND/.env"
-  echo -e "    ➤ .env spostato in $DEST_BACKEND"
+  sudo cp "$SRC_ENV" "$DEST_BACKEND/.env"
+  echo -e "    ➤ .env copiato in $DEST_BACKEND"
 else
   echo -e "❌ \e[1;31mErrore:\e[0m File .env non trovato in $SRC_ENV" >&2
   exit 1
@@ -112,4 +112,5 @@ sudo /www/server/nginx/sbin/nginx -s reload
 echo -e "\n🧹 \e[1;33mSTEP 12:\e[0m Rimuovo directory di simulazione"
 sudo rm -rf "$SCRIPT_DIR/deploy"
 
+# --- ✅ STEP 13: Completamento ---
 echo -e "\n✅ \e[1;32mSTEP 13:\e[0m Produzione '$MODE' aggiornata per '$PROJECT_NAME'\e[0m"
