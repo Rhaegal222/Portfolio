@@ -3,6 +3,7 @@
 # simb-build-deploy.sh
 # Esegue build reale di frontend Angular e backend Laravel, popola
 # la cartella deploy/www/wwwroot/{dev,prod}/<project> per un'anteprima completa.
+# Uso: ./simb-build-deploy.sh -dev | -prod <progetto>
 
 set -e
 

@@ -16,7 +16,7 @@ fi
 PROJECT="$1"
 
 echo "🧹 Rimuovo struttura deploy esistente..."
-sudo rm -rf ./deploy/www
+sudo rm -rf ./deploy
 
 echo "📁 Ricreo struttura iniziale NGINX..."
 sudo ./sima-init-structure.sh "$PROJECT"

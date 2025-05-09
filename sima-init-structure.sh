@@ -106,11 +106,22 @@ echo -e "\n🌐  \e[1;33mSTEP 2:\e[0m Creo directory wwwroot/prod in $WWWROOT_PR
 mkdir -p "$WWWROOT_PROD_ROOT"
 echo -e "  ➕ \e[1;32m$WWWROOT_PROD_ROOT\e[0m"
 
-# --- 🗄️ STEP 2.1: Creo cartella di log ---
-LOGS_DIR="$DEPLOY_ROOT/wwwlogs"
-echo -e "\n🗄️  \e[1;33mSTEP 2.1:\e[0m Creo directory log in $LOGS_DIR"
-mkdir -p "$LOGS_DIR"
-echo -e "  ➕ \e[1;32m$LOGS_DIR\e[0m"
+# --- 🌐 STEP 2.1: Creo sempre wwwroot/prod ---
+WWWROOT_DEV_ROOT="$DEPLOY_ROOT/wwwroot/dev"
+echo -e "\n🌐  \e[1;33mSTEP 2.2:\e[0m Creo directory wwwroot/dev in $WWWROOT_DEV_ROOT"
+mkdir -p "$WWWROOT_DEV_ROOT"
+echo -e "  ➕ \e[1;32m$WWWROOT_DEV_ROOT\e[0m"
+
+# --- 🗄️ STEP 2.2: Creo directory dei log per dev e prod ---
+LOGS_BASE="$DEPLOY_ROOT/wwwlogs"
+LOGS_DEV="$LOGS_BASE/dev"
+LOGS_PROD="$LOGS_BASE/prod"
+
+echo -e "\n🗄️  \e[1;33mSTEP 2.1:\e[0m Creo directory log per dev e prod"
+mkdir -p "$LOGS_DEV" "$LOGS_PROD"
+echo -e "  ➕ \e[1;32m$LOGS_DEV\e[0m"
+echo -e "  ➕ \e[1;32m$LOGS_PROD\e[0m"
+
 
 # --- 📂 STEP 3: Creo struttura progetto se specificato ---
 if [ -n "$1" ]; then

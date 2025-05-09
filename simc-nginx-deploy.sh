@@ -3,6 +3,7 @@
 # simc-nginx-deploy.sh
 # Simula il deploy NGINX in locale tramite la struttura in deploy/www
 # Genera file .conf già pronti per la produzione (path reali)
+# Uso: ./simc-nginx-deploy.sh -dev | -prod
 
 set -e
 
@@ -22,20 +23,32 @@ echo -e "\n🔍 \e[1;33mSTEP 2:\e[0m Definisco percorsi base"
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 DEPLOY_ROOT="$SCRIPT_DIR/deploy/www"
 DEV_BASE="$DEPLOY_ROOT/server/nginx/conf"
-LOCAL_WWWROOT="$DEPLOY_ROOT/wwwroot/$MODE"
+DEV_WWWROOT="$DEPLOY_ROOT/wwwroot/$MODE"
 DEV_DIR="www/wwwroot/dev"
 PROD_DIR="www/wwwroot/prod"
-LOGS_DIR="$DEPLOY_ROOT/wwwlogs"
+
+# Percorsi log
+if [[ "$MODE" == "dev" ]]; then
+  LOGS_DIR="$DEPLOY_ROOT/wwwlogs/dev"
+elif [[ "$MODE" == "prod" ]]; then
+  LOGS_DIR="$DEPLOY_ROOT/wwwlogs/prod"
+else
+  echo -e "❌ \e[1;31mErrore:\e[0m MODE non valido"
+  exit 1
+fi
+
+REAL_LOG_DIR="/www/wwwlogs"  # Percorso reale dei log usato nei VHOST
+
 echo -e "    ➤ DEPLOY_ROOT=$DEPLOY_ROOT"
 echo -e "    ➤ DEV_BASE=$DEV_BASE"
-echo -e "    ➤ LOCAL_WWWROOT=$LOCAL_WWWROOT"
+echo -e "    ➤ DEV_WWWROOT=$DEV_WWWROOT"
 echo -e "    ➤ LOGS_DIR=$LOGS_DIR"
 
 # --- 🔍 STEP 3: Rilevo nome progetto ---
-echo -e "\n📂 \e[1;33mSTEP 3:\e[0m Rilevo nome progetto in $LOCAL_WWWROOT"
-PROJECT_NAME=$(find "$LOCAL_WWWROOT" -mindepth 1 -maxdepth 1 -type d | head -n1 | xargs -n1 basename)
+echo -e "\n📂 \e[1;33mSTEP 3:\e[0m Rilevo nome progetto in $DEV_WWWROOT"
+PROJECT_NAME=$(find "$DEV_WWWROOT" -mindepth 1 -maxdepth 1 -type d | head -n1 | xargs -n1 basename)
 if [[ -z "$PROJECT_NAME" ]]; then
-  echo -e "❌ \e[1;31mErrore:\e[0m Nessun progetto in $LOCAL_WWWROOT"
+  echo -e "❌ \e[1;31mErrore:\e[0m Nessun progetto in $DEV_WWWROOT"
   exit 1
 fi
 echo -e "    ➤ Progetto: $PROJECT_NAME"
@@ -106,8 +119,8 @@ server {
         try_files \$uri \$uri/ /index.html;
     }
 
-    access_log  $LOGS_DIR/${MODE}_${PROJECT_NAME}_front_access.log;
-    error_log   $LOGS_DIR/${MODE}_${PROJECT_NAME}_front_error.log;
+    access_log  $REAL_LOG_DIR/${MODE}/${MODE}_${PROJECT_NAME}_front_access.log;
+    error_log   $REAL_LOG_DIR/${MODE}/${MODE}_${PROJECT_NAME}_front_error.log;
 }
 
 server {
@@ -138,12 +151,21 @@ server {
         deny all;
     }
 
-    access_log  $LOGS_DIR/${MODE}_${PROJECT_NAME}_api_access.log;
-    error_log   $LOGS_DIR/${MODE}_${PROJECT_NAME}_api_error.log;
+    access_log  $REAL_LOG_DIR/${MODE}/${MODE}_${PROJECT_NAME}_api_access.log;
+    error_log   $REAL_LOG_DIR/${MODE}/${MODE}_${PROJECT_NAME}_api_error.log;
 }
 EOF
 
 echo -e "    ➤ VHOST_FILE creato: $VHOST_FILE"
+
+# --- 📂 STEP 9.1: Mostro percorsi usati nel VHOST ---
+echo -e "\n📂 \e[1;33mSTEP 9.1:\e[0m Percorsi usati nel VHOST:"
+echo -e "    ➤ Frontend root : /$DEV_DIR/$PROJECT_NAME/frontend/browser"
+echo -e "    ➤ Backend root  : /$DEV_DIR/$PROJECT_NAME/backend/public"
+echo -e "    ➤ Log access FE : $REAL_LOG_DIR/${MODE}/${MODE}_${PROJECT_NAME}_front_access.log"
+echo -e "    ➤ Log error  FE : $REAL_LOG_DIR/${MODE}/${MODE}_${PROJECT_NAME}_front_error.log"
+echo -e "    ➤ Log access API: $REAL_LOG_DIR/${MODE}/${MODE}_${PROJECT_NAME}_api_access.log"
+echo -e "    ➤ Log error  API: $REAL_LOG_DIR/${MODE}/${MODE}_${PROJECT_NAME}_api_error.log"
 
 # --- 🔗 STEP 10: Creo symlink ---
 echo -e "\n🔗 \e[1;33mSTEP 10:\e[0m Rigenero symlink in sites-enabled"
