@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# simc-nginx-deploy.sh
+# simd-nginx-deploy.sh
 # Simula il deploy NGINX in locale tramite la struttura in deploy/www
 # Genera file .conf già pronti per la produzione (path reali)
 # Uso: ./simc-nginx-deploy.sh -dev | -prod

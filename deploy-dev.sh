@@ -2,7 +2,7 @@
 
 # deploy-dev.sh
 # 1. Cancella e ricrea la struttura deploy
-# 2. Builda frontend/backend
+# 2. Builda frontend e backend separatamente
 # 3. Crea i virtual host NGINX (simulati)
 # 4. Li sincronizza nel server reale
 
@@ -21,11 +21,14 @@ sudo rm -rf ./deploy
 echo "📁 Ricreo struttura iniziale NGINX..."
 sudo ./sima-init-structure.sh "$PROJECT"
 
-echo "🔨 Build e deploy di codice in ambiente DEV..."
-sudo ./simb-build-deploy.sh -dev "$PROJECT"
+echo "🔧 Build backend in ambiente DEV..."
+sudo ./simb-build-backend.sh -dev "$PROJECT"
+
+echo "🔨 Build frontend in ambiente DEV..."
+sudo ./simc-build-frontend.sh -dev "$PROJECT"
 
 echo "⚙️  Genero configurazione NGINX simulata..."
-sudo ./simc-nginx-deploy.sh -dev
+sudo ./simd-nginx-deploy.sh -dev
 
 echo "🚀 Applico la simulazione come configurazione reale..."
 sudo ./sim-to-live.sh -dev
