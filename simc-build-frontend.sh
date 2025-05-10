@@ -65,8 +65,9 @@ rm -rf "$FRONTEND_SRC/dist"
 chown -R $(id -u):$(id -g) "$FRONTEND_SRC"
 
 cd "$FRONTEND_SRC"
+echo "Mi sono spostato in $FRONTEND_SRC"
 npm install --silent
-npm run build -- --configuration production
+npx ng build --configuration production --base-href /kraken/$PROJECT_NAME/ --output-path=dist/frontend --delete-output-path=false
 
 # --- 📦 STEP 3: Trova cartella dist ---
 if [ -d "dist/frontend" ]; then
@@ -81,7 +82,7 @@ if [ ! -d "$DIST_DIR" ]; then
 fi
 
 # --- 🚚 STEP 4: Copia dist ---
-mkdir -p "$FRONTEND_DEST"
+mkdir -p "$FRONTEND_DEST/"
 cp -r "$DIST_DIR/"* "$FRONTEND_DEST/"
 
 echo "✅ Frontend copiato in $FRONTEND_DEST"
