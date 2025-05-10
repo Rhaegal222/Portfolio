@@ -174,8 +174,7 @@ echo -e "    ➤ Log error  FE : $REAL_LOG_DIR/${MODE}/${MODE}_${PROJECT_NAME}_f
 echo -e "    ➤ Log access API: $REAL_LOG_DIR/${MODE}/${MODE}_${PROJECT_NAME}_api_access.log"
 echo -e "    ➤ Log error  API: $REAL_LOG_DIR/${MODE}/${MODE}_${PROJECT_NAME}_api_error.log"
 
-# --- 🔗 STEP 10: Creo symlink ---
-echo -e "\n🔗 \e[1;33mSTEP 10:\e[0m Rigenero symlink in sites-enabled"
+# --- STEP 9: Symlink in sites-enabled ---
 rm -f "$SITES_ENABLED"/*.conf
 ln -s "$VHOST_FILE" "$SITES_ENABLED/$PROJECT_NAME.conf"
 echo -e "    ➤ Symlink creato in $SITES_ENABLED/$PROJECT_NAME.conf"
