@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
-# sim-to-live.sh
-# Sincronizza la simulazione (deploy/www) con l'ambiente reale (/www)
-# Uso: ./sim-to-live.sh -dev | -prod
+# sime-deploy-apply.sh
+# Applica il deploy effettivo in /www, trasferendo la configurazione e il progetto
+# Uso: ./sime-deploy-apply.sh -dev | -prod
 
 set -euo pipefail
 trap 'echo -e "❌ \e[1;31mErrore su comando:\e[0m $BASH_COMMAND" >&2' ERR
@@ -17,24 +17,26 @@ MODE=${1#-}
 
 # --- STEP 1: Definisco variabili di percorso ---
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEPLOY_BASE="$SCRIPT_DIR/deploy/www"
-LOGS_SRC="$DEPLOY_BASE/wwwlogs/$MODE"
+DEPLOY_ROOT="$SCRIPT_DIR/deploy/www"
 
-CONF_SRC="$DEPLOY_BASE/server/nginx/conf"
-WWW_SRC="$DEPLOY_BASE/wwwroot/$MODE"
+# Percorsi di configurazione e file di deploy
+CONF_SRC="$DEPLOY_ROOT/server/nginx/conf"
+WWW_SRC="$DEPLOY_ROOT/wwwroot/$MODE"
+LOGS_SRC="$DEPLOY_ROOT/wwwlogs/$MODE"
 
+# Destinazione finale
 CONF_DEST="/www/server/nginx/conf"
 WWW_DEST="/www/wwwroot/$MODE"
 LOGS_DEST="/www/wwwlogs"
 
 echo -e "\n🚀 \e[1;33mSTEP 1:\e[0m MODE=$MODE"
-echo -e "    ➤ DEPLOY_BASE=$DEPLOY_BASE"
-echo -e "    ➤ LOGS_SRC=$LOGS_SRC"
-echo -e "    ➤ LOGS_DEST=$LOGS_DEST"
-echo -e "    ➤ WWW_SRC=$WWW_SRC"
-echo -e "    ➤ WWW_DEST=$WWW_DEST"
+echo -e "    ➤ DEPLOY_ROOT=$DEPLOY_ROOT"
 echo -e "    ➤ CONF_SRC=$CONF_SRC"
+echo -e "    ➤ WWW_SRC=$WWW_SRC"
+echo -e "    ➤ LOGS_SRC=$LOGS_SRC"
 echo -e "    ➤ CONF_DEST=$CONF_DEST"
+echo -e "    ➤ WWW_DEST=$WWW_DEST"
+echo -e "    ➤ LOGS_DEST=$LOGS_DEST"
 
 # --- STEP 2: Trovo il progetto da deployare ---
 echo -e "\n📂 \e[1;33mSTEP 2:\e[0m Rilevo nome progetto in $WWW_SRC"
@@ -68,15 +70,17 @@ SA="$CONF_DEST/sites-available/$MODE"
 SE="$CONF_DEST/sites-enabled/$MODE"
 SA_CONF="$SA/$PROJECT_NAME.conf"
 SE_CONF="$SE/$PROJECT_NAME.conf"
-sudo mkdir -p "$SE"
-if [[ -f "$SA_CONF" ]]; then
-  sudo rm -f "$SE_CONF"
-  sudo ln -s "$SA_CONF" "$SE_CONF"
-  echo -e "    ➤ Symlink: $SE_CONF → $SA_CONF"
-else
+
+# Controllo se il file di configurazione esiste
+if [[ ! -f "$SA_CONF" ]]; then
   echo -e "❌ \e[1;31mErrore:\e[0m $SA_CONF non trovato"
   exit 1
 fi
+
+sudo mkdir -p "$SE"
+sudo rm -f "$SE_CONF"
+sudo ln -s "$SA_CONF" "$SE_CONF"
+echo -e "    ➤ Symlink: $SE_CONF → $SA_CONF"
 
 # --- STEP 6: Deploy del solo progetto (senza toccare gli altri) ---
 echo -e "\n🌍 \e[1;33mSTEP 6:\e[0m Deploy di $PROJECT_NAME in $WWW_DEST"
@@ -100,7 +104,6 @@ fi
 
 # --- STEP 8: Trasferisco i log del progetto ---
 echo -e "\n📄 \e[1;33mSTEP 8:\e[0m Trasferisco log per $PROJECT_NAME"
-LOGS_DEST="/www/wwwlogs/$MODE"    # <— qui
 sudo mkdir -p "$LOGS_DEST"
 
 for log in "$LOGS_SRC/${MODE}_${PROJECT_NAME}"*.log; do
