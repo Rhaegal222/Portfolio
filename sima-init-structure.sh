@@ -83,7 +83,7 @@ EOF
 fi
 
 # --- ⚙️ STEP 1.1: Configuro proxy_params.conf ---
-echo -e "\n⚙️  \e[1;33mSTEP 1.1:\e[0m Configuro proxy_params.conf"
+echo -e "\n⚙️  \e[1;33mSTEP 2:\e[0m Configuro proxy_params.conf"
 if [ -f "$PROXY_PARAMS_SRC" ]; then
   cp "$PROXY_PARAMS_SRC" "$CONF_D/proxy_params.conf"
   echo -e "  📄 \e[1;32mCopiato proxy_params.conf da $PROXY_PARAMS_SRC\e[0m"
@@ -106,34 +106,50 @@ echo -e "\n🌐  \e[1;33mSTEP 2:\e[0m Creo directory wwwroot/prod in $WWWROOT_PR
 mkdir -p "$WWWROOT_PROD_ROOT"
 echo -e "  ➕ \e[1;32m$WWWROOT_PROD_ROOT\e[0m"
 
-# --- 🌐 STEP 2.1: Creo sempre wwwroot/prod ---
+# --- 🌐 STEP 3: Creo sempre wwwroot/prod ---
 WWWROOT_DEV_ROOT="$DEPLOY_ROOT/wwwroot/dev"
-echo -e "\n🌐  \e[1;33mSTEP 2.2:\e[0m Creo directory wwwroot/dev in $WWWROOT_DEV_ROOT"
+echo -e "\n🌐  \e[1;33mSTEP 3:\e[0m Creo directory wwwroot/dev in $WWWROOT_DEV_ROOT"
 mkdir -p "$WWWROOT_DEV_ROOT"
 echo -e "  ➕ \e[1;32m$WWWROOT_DEV_ROOT\e[0m"
 
-# --- 🗄️ STEP 2.2: Creo directory dei log per dev e prod ---
+# --- 🗄️ STEP 4: Creo directory dei log per dev e prod ---
 LOGS_BASE="$DEPLOY_ROOT/wwwlogs"
 LOGS_DEV="$LOGS_BASE/dev"
 LOGS_PROD="$LOGS_BASE/prod"
 
-echo -e "\n🗄️  \e[1;33mSTEP 2.1:\e[0m Creo directory log per dev e prod"
+echo -e "\n🗄️  \e[1;33mSTEP 4:\e[0m Creo directory log per dev e prod"
 mkdir -p "$LOGS_DEV" "$LOGS_PROD"
 echo -e "  ➕ \e[1;32m$LOGS_DEV\e[0m"
 echo -e "  ➕ \e[1;32m$LOGS_PROD\e[0m"
 
 
-# --- 📂 STEP 3: Creo struttura progetto se specificato ---
+# --- 📂 STEP 5: Creo struttura progetto se specificato ---
 if [ -n "$1" ]; then
   PROJECT="$1"
   FRONTEND_DIR="$WWWROOT_PROD_ROOT/$PROJECT/frontend"
   BACKEND_DIR="$WWWROOT_PROD_ROOT/$PROJECT/backend"
 
-  echo -e "\n📂  \e[1;33mSTEP 3:\e[0m Creo struttura wwwroot per progetto '$PROJECT'"
+  echo -e "\n📂  \e[1;33mSTEP 5:\e[0m Creo struttura wwwroot per progetto '$PROJECT'"
   mkdir -p "$FRONTEND_DIR" "$BACKEND_DIR"
   echo -e "  ➕ \e[1;32m$FRONTEND_DIR\e[0m"
   echo -e "  ➕ \e[1;32m$BACKEND_DIR\e[0m"
 fi
 
-# --- ✅ STEP 4: Completamento ---
-echo -e "\n✅  \e[1;33mSTEP 4:\e[0m Struttura di deploy pronta."
+# --- 🔎 STEP 6: Trovo porte libere ---
+echo -e "\n🔎 \e[1;33mSTEP 6:\e[0m Trovo porte libere"
+find_free_port(){ local p=$1; while lsof -iTCP:$p -sTCP:LISTEN >/dev/null 2>&1; do ((p++)); done; echo $p; }
+FRONT_PORT=$(find_free_port 8080)
+BACK_PORT=$(find_free_port 8000)
+echo -e "    ➤ FRONT_PORT=$FRONT_PORT, BACK_PORT=$BACK_PORT"
+
+echo -e "\n🔧 [SIM $MODE] frontend -> http://localhost:$FRONT_PORT/"
+echo -e "🔧 [SIM $MODE] backend  -> http://localhost:$BACK_PORT/"
+
+# --- 🔢 STEP 7: Scrive le porte assegnate temporaneamente in $SCRIPT_DIR ---
+PORTS_FILE="$SCRIPT_DIR/assigned_ports.env"
+echo -e "\n💾 \e[1;33mSTEP 7:\e[0m Scrivo porte assegnate in $PORTS_FILE"
+echo "FRONT_PORT=$FRONT_PORT" > "$PORTS_FILE"
+echo "BACK_PORT=$BACK_PORT" >> "$PORTS_FILE"
+
+# --- ✅ STEP 6: Completamento ---
+echo -e "\n✅  \e[1;33mSTEP 8:\e[0m Struttura di deploy pronta."

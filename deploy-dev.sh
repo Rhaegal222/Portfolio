@@ -21,6 +21,15 @@ sudo rm -rf ./deploy
 echo "📁 Ricreo struttura iniziale NGINX..."
 sudo ./sima-init-structure.sh "$PROJECT"
 
+PORTS_FILE="./assigned_ports.env"
+if [[ ! -f "$PORTS_FILE" ]]; then
+  echo "❌ File porte non trovato: $PORTS_FILE"
+  exit 1
+fi
+
+source "$PORTS_FILE"
+export BACKEND_PORT="$BACK_PORT"
+
 echo "🔧 Build backend in ambiente DEV..."
 sudo ./simb-build-backend.sh -dev "$PROJECT"
 

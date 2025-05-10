@@ -53,6 +53,23 @@ if [[ -z "$PROJECT_NAME" ]]; then
 fi
 echo -e "    ➤ Progetto: $PROJECT_NAME"
 
+# --- 🔢 STEP 3.1: Leggo le porte assegnate da file ---
+echo -e "\n🔢 \e[1;33mSTEP 3.1:\e[0m Leggo porte da assigned_ports.env"
+PORTS_FILE="$SCRIPT_DIR/assigned_ports.env"
+if [[ ! -f "$PORTS_FILE" ]]; then
+  echo -e "❌ \e[1;31mErrore:\e[0m File porte non trovato: $PORTS_FILE"
+  exit 1
+fi
+source "$PORTS_FILE"
+
+if [[ -z "${FRONT_PORT:-}" || -z "${BACK_PORT:-}" ]]; then
+  echo -e "❌ \e[1;31mErrore:\e[0m FRONT_PORT o BACK_PORT non presenti nel file"
+  exit 1
+fi
+
+echo -e "    ➤ FRONT_PORT=$FRONT_PORT"
+echo -e "    ➤ BACK_PORT=$BACK_PORT"
+
 # --- 🗂️ STEP 4: Creo cartella log e file ---
 echo -e "\n🗂️  \e[1;33mSTEP 4:\e[0m Creo directory e file di log"
 mkdir -p "$LOGS_DIR"
@@ -71,16 +88,6 @@ if [[ -z "$PHP_SOCK" || ! -S "$PHP_SOCK" ]]; then
   exit 1
 fi
 echo -e "    ➤ PHP_SOCK=$PHP_SOCK"
-
-# --- 🔎 STEP 6: Trovo porte libere ---
-echo -e "\n🔎 \e[1;33mSTEP 6:\e[0m Trovo porte libere"
-find_free_port(){ local p=$1; while lsof -iTCP:$p -sTCP:LISTEN >/dev/null 2>&1; do ((p++)); done; echo $p; }
-FRONT_PORT=$(find_free_port 8080)
-BACK_PORT=$(find_free_port 8000)
-echo -e "    ➤ FRONT_PORT=$FRONT_PORT, BACK_PORT=$BACK_PORT"
-
-echo -e "\n🔧 [SIM $MODE] frontend -> http://localhost:$FRONT_PORT/"
-echo -e "🔧 [SIM $MODE] backend  -> http://localhost:$BACK_PORT/"
 
 # --- 🗂️ STEP 7: Preparo directory NGINX ---
 echo -e "\n📁 \e[1;33mSTEP 7:\e[0m Creo conf.d, sites-available e sites-enabled"

@@ -124,9 +124,33 @@ else
   sudo /www/server/nginx/sbin/nginx
 fi
 
-# --- STEP 11: Pulisci simulazione ---
-echo -e "\n🧹 \e[1;33mSTEP 11:\e[0m Rimuovo directory di simulazione"
-sudo rm -rf "$SCRIPT_DIR/deploy"
+# --- STEP 11: Leggo le porte assegnate da file ---
+echo -e "\n🔢 \e[1;33mSTEP 11:\e[0m Leggo porte da assigned_ports.env"
+PORTS_FILE="$SCRIPT_DIR/assigned_ports.env"
 
-# --- STEP 12: Fine ---
-echo -e "\n✅ \e[1;32mSTEP 12:\e[0m Deploy ($MODE) di '$PROJECT_NAME' completato!\e[0m"
+if [[ ! -f "$PORTS_FILE" ]]; then
+  echo -e "❌ \e[1;31mErrore:\e[0m File porte non trovato: $PORTS_FILE"
+  exit 1
+fi
+
+source "$PORTS_FILE"
+
+if [[ -z "${FRONT_PORT:-}" || -z "${BACK_PORT:-}" ]]; then
+  echo -e "❌ \e[1;31mErrore:\e[0m FRONT_PORT o BACK_PORT non presenti nel file"
+  exit 1
+fi
+
+echo -e "    ➤ FRONT_PORT=$FRONT_PORT"
+echo -e "    ➤ BACK_PORT=$BACK_PORT"
+
+echo -e "\n🌐 \e[1;33mINFO:\e[0m URL simulazione attiva:"
+echo -e "    🔗 Frontend ➝ http://localhost:$FRONT_PORT/"
+echo -e "    🔗 Backend  ➝ http://localhost:$BACK_PORT/"
+
+# --- 🧹 STEP 12: Rimuovo directory di simulazione ---
+echo -e "\n🧹 \e[1;33mSTEP 12:\e[0m Rimuovo directory di simulazione"
+sudo rm -rf "$SCRIPT_DIR/deploy"
+rm -f "$PORTS_FILE"
+
+# --- STEP 13: Fine ---
+echo -e "\n✅ \e[1;32mSTEP 13:\e[0m Deploy ($MODE) di '$PROJECT_NAME' completato!\e[0m"
