@@ -20,7 +20,7 @@ if [ -z "$1" ]; then
   exit 1
 else
   PROJECT="$1"
-  echo -e "\n  ➤  Progetto specificato: \e[1;32m$PROJECT\e[0m"
+  echo -e "\n➤  Progetto specificato: \e[1;32m$PROJECT\e[0m"
   shift
 fi
 
@@ -38,13 +38,12 @@ fi
 
 # Cerchiamo la cartella *_frontend
 FRONTEND_DIR=$(find "$PROJECT_PATH" -maxdepth 1 -type d -name "*_frontend")
-if [ -z "$FRONTEND_DIR" ]; then
+if [ -n "$FRONTEND_DIR" ]; then
+  PROJECT_NAME=$(basename "$FRONTEND_DIR" | cut -d'_' -f1)
+else
   echo "❌ Nessuna cartella *_frontend trovata in $PROJECT_PATH"
   exit 1
 fi
-
-# Estraggo il nome del progetto dal nome della cartella (prima del carattere '_')
-PROJECT_NAME=$(basename "$FRONTEND_DIR" | cut -d'_' -f1)
 
 # Riepilogo
 echo -e "\nℹ️   \e[1;32mRiepilogo del progetto\e[0m\n"
