@@ -126,7 +126,7 @@ fi
 
 # --- STEP 11: Leggo le porte assegnate da file ---
 echo -e "\n🔢 \e[1;33mSTEP 11:\e[0m Leggo porte da assigned_ports.env"
-PORTS_FILE="$SCRIPT_DIR/assigned_ports.env"
+PORTS_FILE="$SCRIPT_DIR/deploy/assigned_ports.env"
 
 if [[ ! -f "$PORTS_FILE" ]]; then
   echo -e "❌ \e[1;31mErrore:\e[0m File porte non trovato: $PORTS_FILE"

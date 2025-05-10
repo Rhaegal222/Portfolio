@@ -21,7 +21,7 @@ sudo rm -rf ./deploy
 echo "📁 Ricreo struttura iniziale NGINX..."
 sudo ./sima-init-structure.sh "$PROJECT"
 
-PORTS_FILE="./assigned_ports.env"
+PORTS_FILE="./deploy/assigned_ports.env"
 if [[ ! -f "$PORTS_FILE" ]]; then
   echo "❌ File porte non trovato: $PORTS_FILE"
   exit 1
