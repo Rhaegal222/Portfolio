@@ -38,73 +38,13 @@ mkdir -p \
   "$SITES_AVAIL_PROD" \
   "$SNIPPETS"
 
-# Configuro nginx.conf solo se non esiste
-if [ ! -f "$NGINX_MAIN_CONF" ]; then
-  cat > "$NGINX_MAIN_CONF" <<'EOF'
-user  www www;
-worker_processes auto;
-pid        /www/server/nginx/logs/nginx.pid;
-error_log  /www/server/nginx/logs/error.log crit;
-
-events {
-    worker_connections 51200;
-    use                epoll;
-}
-
-http {
-    include       mime.types;
-    include       proxy.conf;
-    lua_package_path "/www/server/nginx/lib/lua/?.lua;;";
-
-    default_type  application/octet-stream;
-    sendfile       on;
-    tcp_nopush     on;
-    tcp_nodelay    on;
-    keepalive_timeout 65;
-    client_max_body_size 50m;
-
-    gzip on;
-    gzip_types text/plain text/css application/json application/javascript;
-
-    ssl_protocols       TLSv1.2 TLSv1.3;
-    ssl_prefer_server_ciphers on;
-    ssl_ciphers         'ECDHE-ECDSA-CHACHA20-POLY1305:...';
-
-    include conf.d/*.conf;
-    include sites-enabled/dev/*.conf;
-    include sites-enabled/prod/*.conf;
-
-    include /www/server/panel/vhost/nginx/*.conf;
-    include /www/server/panel/vhost/nginx/dev/*.conf;
-    include /www/server/panel/vhost/nginx/prod/*.conf;
-}
-EOF
-  echo -e "  ➕ \e[1;32mCreato $NGINX_MAIN_CONF\e[0m"
+# --- 🌐 STEP 2: Creo directory wwwroot/prod/apps solo se -prod è specificato ---
+if [[ "$1" == "-prod" || "$1" == "-dev" ]]; then
+  WWWROOT_PROD_ROOT="$DEPLOY_ROOT/wwwroot/prod"
+  echo -e "\n🌐  STEP 2: Creo directory wwwroot/prod/apps in $WWWROOT_PROD_ROOT"
+  mkdir -p "$WWWROOT_PROD_ROOT/apps"
+  echo -e "  ➕ $WWWROOT_PROD_ROOT/apps"
 fi
-
-# --- ⚙️ STEP 1.1: Configuro proxy_params.conf ---
-echo -e "\n⚙️  \e[1;33mSTEP 2:\e[0m Configuro proxy_params.conf"
-if [ -f "$PROXY_PARAMS_SRC" ]; then
-  cp "$PROXY_PARAMS_SRC" "$CONF_D/proxy_params.conf"
-  echo -e "  📄 \e[1;32mCopiato proxy_params.conf da $PROXY_PARAMS_SRC\e[0m"
-else
-  cat > "$CONF_D/proxy_params.conf" <<'EOF'
-# proxy_params.conf
-proxy_http_version 1.1;
-proxy_set_header   Host              $host;
-proxy_set_header   X-Real-IP         $remote_addr;
-proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
-proxy_set_header   X-Forwarded-Proto $scheme;
-proxy_redirect     off;
-EOF
-  echo -e "  ➕ \e[1;32mGenerato proxy_params.conf di default\e[0m"
-fi
-
-# --- 🌐 STEP 2: Creo sempre wwwroot/prod/apps ---
-WWWROOT_PROD_ROOT="$DEPLOY_ROOT/wwwroot/prod"
-echo -e "\n🌐  STEP 2: Creo directory wwwroot/prod/apps in $WWWROOT_PROD_ROOT"
-mkdir -p "$WWWROOT_PROD_ROOT/apps"
-echo -e "  ➕ $WWWROOT_PROD_ROOT/apps"
 
 # --- 🌐 STEP 3: Creo sempre wwwroot/dev/apps ---
 WWWROOT_DEV_ROOT="$DEPLOY_ROOT/wwwroot/dev"
