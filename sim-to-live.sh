@@ -150,7 +150,6 @@ echo -e "    🔗 Backend  ➝ http://localhost:$BACK_PORT/"
 # --- 🧹 STEP 12: Rimuovo directory di simulazione ---
 echo -e "\n🧹 \e[1;33mSTEP 12:\e[0m Rimuovo directory di simulazione"
 sudo rm -rf "$SCRIPT_DIR/deploy"
-rm -f "$PORTS_FILE"
 
 # --- STEP 13: Fine ---
 echo -e "\n✅ \e[1;32mSTEP 13:\e[0m Deploy ($MODE) di '$PROJECT_NAME' completato!\e[0m"

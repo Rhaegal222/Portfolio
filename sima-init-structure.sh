@@ -2,9 +2,9 @@
 #
 # sima-init-structure.sh
 # 1) Crea la struttura base di NGINX (sempre)
-# 2) Crea wwwroot/prod anche se vuota
-# 3) Se passi un <project>, crea anche wwwroot/prod/<project>/{frontend,backend}
-# 4) Crea la cartella di log
+# 2) Crea wwwroot/prod/apps e wwwroot/dev/apps (anche vuote)
+# 3) Se specificato un <project>, crea wwwroot/.../apps/<project>/{frontend,backend} sia in prod che in dev
+# 4) Crea la cartella dei log
 #
 set -e
 
@@ -100,17 +100,17 @@ EOF
   echo -e "  ➕ \e[1;32mGenerato proxy_params.conf di default\e[0m"
 fi
 
-# --- 🌐 STEP 2: Creo sempre wwwroot/prod ---
+# --- 🌐 STEP 2: Creo sempre wwwroot/prod/apps ---
 WWWROOT_PROD_ROOT="$DEPLOY_ROOT/wwwroot/prod"
-echo -e "\n🌐  \e[1;33mSTEP 2:\e[0m Creo directory wwwroot/prod in $WWWROOT_PROD_ROOT"
-mkdir -p "$WWWROOT_PROD_ROOT"
-echo -e "  ➕ \e[1;32m$WWWROOT_PROD_ROOT\e[0m"
+echo -e "\n🌐  STEP 2: Creo directory wwwroot/prod/apps in $WWWROOT_PROD_ROOT"
+mkdir -p "$WWWROOT_PROD_ROOT/apps"
+echo -e "  ➕ $WWWROOT_PROD_ROOT/apps"
 
-# --- 🌐 STEP 3: Creo sempre wwwroot/prod ---
+# --- 🌐 STEP 3: Creo sempre wwwroot/dev/apps ---
 WWWROOT_DEV_ROOT="$DEPLOY_ROOT/wwwroot/dev"
-echo -e "\n🌐  \e[1;33mSTEP 3:\e[0m Creo directory wwwroot/dev in $WWWROOT_DEV_ROOT"
-mkdir -p "$WWWROOT_DEV_ROOT"
-echo -e "  ➕ \e[1;32m$WWWROOT_DEV_ROOT\e[0m"
+echo -e "\n🌐  STEP 3: Creo directory wwwroot/dev/apps in $WWWROOT_DEV_ROOT"
+mkdir -p "$WWWROOT_DEV_ROOT/apps"
+echo -e "  ➕ $WWWROOT_DEV_ROOT/apps"
 
 # --- 🗄️ STEP 4: Creo directory dei log per dev e prod ---
 LOGS_BASE="$DEPLOY_ROOT/wwwlogs"
@@ -126,13 +126,20 @@ echo -e "  ➕ \e[1;32m$LOGS_PROD\e[0m"
 # --- 📂 STEP 5: Creo struttura progetto se specificato ---
 if [ -n "$1" ]; then
   PROJECT="$1"
-  FRONTEND_DIR="$WWWROOT_PROD_ROOT/$PROJECT/frontend"
-  BACKEND_DIR="$WWWROOT_PROD_ROOT/$PROJECT/backend"
+  PROD_ROOT="$WWWROOT_PROD_ROOT/apps/$PROJECT"
+  DEV_ROOT="$WWWROOT_DEV_ROOT/apps/$PROJECT"
 
-  echo -e "\n📂  \e[1;33mSTEP 5:\e[0m Creo struttura wwwroot per progetto '$PROJECT'"
-  mkdir -p "$FRONTEND_DIR" "$BACKEND_DIR"
-  echo -e "  ➕ \e[1;32m$FRONTEND_DIR\e[0m"
-  echo -e "  ➕ \e[1;32m$BACKEND_DIR\e[0m"
+  FRONT_PROD="$PROD_ROOT/frontend"
+  BACK_PROD="$PROD_ROOT/backend"
+  FRONT_DEV="$DEV_ROOT/frontend"
+  BACK_DEV="$DEV_ROOT/backend"
+
+  echo -e "\n📂  \e[1;33mSTEP 5:\e[0m Creo struttura per progetto '$PROJECT' in prod e dev"
+  mkdir -p "$FRONT_PROD" "$BACK_PROD" "$FRONT_DEV" "$BACK_DEV"
+  echo -e "  ➕ $FRONT_PROD"
+  echo -e "  ➕ $BACK_PROD"
+  echo -e "  ➕ $FRONT_DEV"
+  echo -e "  ➕ $BACK_DEV"
 fi
 
 # --- 🔎 STEP 6: Trovo porte libere ---
@@ -146,7 +153,7 @@ echo -e "\n🔧 [SIM $MODE] frontend -> http://localhost:$FRONT_PORT/"
 echo -e "🔧 [SIM $MODE] backend  -> http://localhost:$BACK_PORT/"
 
 # --- 🔢 STEP 7: Scrive le porte assegnate temporaneamente in $SCRIPT_DIR ---
-PORTS_FILE="$SCRIPT_DIR/assigned_ports.env"
+PORTS_FILE="$SCRIPT_DIR/deploy/assigned_ports.env"
 echo -e "\n💾 \e[1;33mSTEP 7:\e[0m Scrivo porte assegnate in $PORTS_FILE"
 echo "FRONT_PORT=$FRONT_PORT" > "$PORTS_FILE"
 echo "BACK_PORT=$BACK_PORT" >> "$PORTS_FILE"

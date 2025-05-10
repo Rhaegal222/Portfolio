@@ -22,18 +22,28 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 PROJECT_PATH=$(realpath "$1")
 PROJECT_NAME=$(basename "$PROJECT_PATH")
 
-BACKEND_SRC=$(find "$PROJECT_PATH" -maxdepth 1 -type d -name "*_backend")
-BACKEND_DEST="$SCRIPT_DIR/deploy/www/wwwroot/$MODE/$PROJECT_NAME/backend"
+# 📌 Chiedo se è progetto principale
+read -p "È il progetto principale? [y/N] " IS_MAIN
+IS_MAIN=${IS_MAIN,,}  # lowercase
 
-echo "⚙️ Deploy backend: $PROJECT_NAME"
+if [[ "$IS_MAIN" == "y" ]]; then
+  BASE_DIR="$SCRIPT_DIR/deploy/www/wwwroot/$MODE/$PROJECT_NAME"
+else
+  BASE_DIR="$SCRIPT_DIR/deploy/www/wwwroot/$MODE/apps/$PROJECT_NAME"
+fi
+
+BACKEND_SRC=$(find "$PROJECT_PATH" -maxdepth 1 -type d -name "*_backend")
+BACKEND_DEST="$BASE_DIR/backend"
+
+echo "⚙️ Deploy backend: $PROJECT_NAME -> $BACKEND_DEST"
 
 # Copia sorgente
 rm -rf "$BACKEND_DEST"
 mkdir -p "$BACKEND_DEST"
-rsync -a --exclude .env --exclude vendor "$BACKEND_SRC/" "$BACKEND_DEST/"
+rsync -a --exclude .env --exclude vendor "$BACKEND_SRC"/ "$BACKEND_DEST"/
 
 # Imposta .env
-if [ -f "$BACKEND_SRC/.env.prod" ]; then
+if [ -f "$BACKEND_SRC/.env.prod" ] && [[ "$MODE" == "prod" ]]; then
   cp "$BACKEND_SRC/.env.prod" "$BACKEND_DEST/.env"
 elif [ -f "$BACKEND_SRC/.env.example" ]; then
   cp "$BACKEND_SRC/.env.example" "$BACKEND_DEST/.env"
