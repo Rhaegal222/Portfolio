@@ -209,6 +209,7 @@ server {
 
   access_log  $WWWLOGS/${PROJECT_NAME}_api_access.log;
   error_log   $WWWLOGS/${PROJECT_NAME}_api_error.log;
+  }
 }
 EOF
 
