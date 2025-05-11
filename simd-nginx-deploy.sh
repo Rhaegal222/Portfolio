@@ -7,6 +7,11 @@
 
 set -euo pipefail
 
+if [[ $EUID -ne 0 ]]; then
+  echo "❌ Questo script deve essere eseguito con i permessi di root. Esegui con sudo."
+  exec sudo "$0" "$@"
+fi
+
 # 📍 STEP 0: Parametri
 echo -e "\n🔍  \e[1;33mSTEP 0:\e[0m Verifico modalità di esecuzione"
 if [[ "${1:-}" != "-dev" && "${1:-}" != "-prod" ]]; then
@@ -78,7 +83,7 @@ fi
 export PHP_SOCK
 
 # ─── Percorsi NGINX in simulazione ───
-WWWROOT="www/wwwroot/$MODE"
+WWWROOT="/www/wwwroot/$MODE"
 WWWLOGS="www/wwwlogs"
 NGINX_CONF_ROOT="$DEPLOY_ROOT/server/nginx/conf"
 CONF_D="$NGINX_CONF_ROOT/conf.d"
@@ -198,17 +203,17 @@ fi
 
 # 📜 STEP 5: Riepilogo variabili
 echo -e "\nℹ️   \e[1;33mSTEP 5:\e[0m Riepilogo variabili di deploy"
-echo -e "  Modalità : $MODE"
-echo -e "  Progetto : $PROJECT"
-echo -e "  Nome     : $PROJECT_NAME"
-echo -e "  SCRIPT   : $SCRIPT_DIR"
-echo -e "  DEPLOY   : $DEPLOY_ROOT"
-echo -e "  WWWROOT  : $WWWROOT"
-echo -e "  LOGS     : $REAL_LOG_DIR"
-echo -e "  FRONT_PORT = $FRONT_PORT"
-echo -e "  BACK_PORT  = $BACK_PORT"
-echo -e "  PHP_SOCK   = $PHP_SOCK"
-echo -e "  nginx.conf = $NGINX_CONF"
-echo -e "  vhost file = $VHOST_FILE"
+echo -e "  ➤  Modalità:   \e[1;33m$MODE\e[0m"
+echo -e "  ➤  Progetto:   \e[1;33m$PROJECT\e[0m"
+echo -e "  ➤  Nome:       \e[1;33m$PROJECT_NAME\e[0m"
+echo -e "  ➤  SCRIPT:     \e[1;33m$SCRIPT_DIR\e[0m"
+echo -e "  ➤  DEPLOY:     \e[1;33m$DEPLOY_ROOT\e[0m"
+echo -e "  ➤  WWWROOT:    \e[1;33m$WWWROOT\e[0m"
+echo -e "  ➤  LOGS:       \e[1;33m$REAL_LOG_DIR\e[0m"
+echo -e "  ➤  PHP_SOCK:   \e[1;33m$PHP_SOCK\e[0m"
+echo -e "  ➤  nginx.conf: \e[1;33m$NGINX_CONF\e[0m"
+echo -e "  ➤  vhost file: \e[1;33m$VHOST_FILE\e[0m"
+echo -e "  ➤  FRONT_PORT: \e[1;33m$FRONT_PORT\e[0m"
+echo -e "  ➤  BACK_PORT:  \e[1;33m$BACK_PORT\e[0m"
 
 echo -e "\n✅  Simulazione completa: i file sono pronti in $DEPLOY_ROOT/server/nginx/conf"

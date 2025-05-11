@@ -5,6 +5,11 @@
 
 set -e
 
+if [[ $EUID -ne 0 ]]; then
+  echo "❌ Questo script deve essere eseguito con i permessi di root. Esegui con sudo."
+  exec sudo "$0" "$@"
+fi
+
 # 📍 Parametri
 echo -e "\n🔍  \e[1;33mSTEP 0:\e[0m Verifico modalità di esecuzione: \e[1;32m$1\e[0m"
 if [[ "$1" != "-dev" && "$1" != "-prod" ]]; then

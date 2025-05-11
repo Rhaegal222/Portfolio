@@ -5,7 +5,11 @@
 # Uso: ./sime-deploy-apply.sh -dev | -prod
 
 set -euo pipefail
-trap 'echo -e "❌ \e[1;31mErrore su comando:\e[0m $BASH_COMMAND" >&2' ERR
+
+if [[ $EUID -ne 0 ]]; then
+  echo "❌ Questo script deve essere eseguito con i permessi di root. Esegui con sudo."
+  exec sudo "$0" "$@"
+fi
 
 # --- STEP 0: Verifica parametro environment ---
 echo -e "\n🔍 \e[1;33mSTEP 0:\e[0m Verifico parametro environment"

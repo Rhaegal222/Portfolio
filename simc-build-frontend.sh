@@ -5,6 +5,17 @@
 
 set -e
 
+if [[ $EUID -ne 0 ]]; then
+  echo "❌ Questo script deve essere eseguito con i permessi di root. Esegui con sudo."
+  exec sudo "$0" "$@"
+fi
+
+# Controlla che lo script venga eseguito con i permessi di root
+if [[ $EUID -ne 0 ]]; then
+  echo "❌ Questo script deve essere eseguito con i permessi di root. Esegui con sudo."
+  exec sudo "$0" "$@"
+fi
+
 # 📍 Parametri
 echo -e "\n🔍  \e[1;33mSTEP 0:\e[0m Verifico modalità di esecuzione: \e[1;32m$1\e[0m"
 if [[ "$1" != "-dev" && "$1" != "-prod" ]]; then
@@ -84,11 +95,11 @@ FRONTEND_DEST="$BASE_DIR/frontend"
 
 # 📁 Creazione della cartella di destinazione
 echo -e "\n📁  \e[1;33mSTEP 3:\e[0m Creazione della cartella di destinazione \e[1;32m$FRONTEND_DIR\e[0m"
-rm -rf "$FRONTEND_DEST"
-mkdir -p "$FRONTEND_DEST"
+sudo rm -rf "$FRONTEND_DEST"
+sudo mkdir -p "$FRONTEND_DEST"
 
 # 🚚 Carico il file delle porte
-echo -e "\n🚚   \e[1;33mSTEP 4:\e[0m Carico il file delle porte"
+echo -e "\n🚚  \e[1;33mSTEP 4:\e[0m Carico il file delle porte"
 PORTS_FILE="$SCRIPT_DIR/deploy/assigned_ports.env"
 if [ ! -f "$PORTS_FILE" ]; then
   echo "❌ File porte non trovato: $PORTS_FILE"
@@ -104,10 +115,10 @@ fi
 echo -e "\n🔧  \e[1;33mSTEP 5:\e[0m Imposto la variabile per l'URL dell'API"
 ENV_DIR="$FRONTEND_DIR/src/environments"
 API_URL="http://localhost:$BACK_PORT/api"
-mkdir -p "$ENV_DIR"
+sudo mkdir -p "$ENV_DIR"
 
 echo -e "\n🌱  \e[1;33mSTEP 6:\e[0m Creazione di \e[1;33menvironment.ts\e[0m e \e[1;33menvironment.prod.ts\e[0m"
-cat > "$ENV_DIR/environment.ts" <<EOF
+sudo cat > "$ENV_DIR/environment.ts" <<EOF
 export const environment = {
   production: false,
   apiUrl: '$API_URL'
@@ -135,8 +146,8 @@ fi
 
 # Pulizia della cartella dist prima di eseguire il build
 echo -e "\n🧹  \e[1;33mSTEP 7.1:\e[0m Pulizia della cartella dist"
-rm -rf "$FRONTEND_DIR/dist"
-chown -R "$(id -u):$(id -g)" "$FRONTEND_DIR"
+sudo rm -rf "$FRONTEND_DIR/dist"
+sudo chown -R "$(id -u):$(id -g)" "$FRONTEND_DIR"
 cd "$FRONTEND_DIR"
 
 echo -e "\n🔧  \e[1;33mSTEP 7.2:\e[0m Installazione delle dipendenze"
@@ -177,7 +188,7 @@ fi
 
 # 🚚 STEP 9: Copia i file nella destinazione
 echo -e "\n🚚  \e[1;33mSTEP 9:\e[0m Copia i file nella destinazione \e[1;32m$FRONTEND_DEST\e[0m"
-mkdir -p "$FRONTEND_DEST"
-cp -r "$DIST_DIR/"* "$FRONTEND_DEST"
+sudo mkdir -p "$FRONTEND_DEST"
+sudo cp -r "$DIST_DIR/"* "$FRONTEND_DEST"
 
 echo -e "\n✅  Frontend pronto in \e[1;32m$FRONTEND_DEST\e[0m"

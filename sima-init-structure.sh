@@ -9,6 +9,11 @@
 #
 set -e
 
+if [[ $EUID -ne 0 ]]; then
+  echo "❌ Questo script deve essere eseguito con i permessi di root. Esegui con sudo."
+  exec sudo "$0" "$@"
+fi
+
 # Verifico se la modalità di esecuzione
 echo -e "\n🔍  \e[1;33mSTEP 0:\e[0m Verifico modalità di esecuzione: \e[1;32m$1\e[0m"
 if [[ "$1" != "-dev" && "$1" != "-prod" ]]; then
@@ -18,28 +23,29 @@ fi
 MODE=${1#-}
 shift
 
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+
 if [ -n "$1" ]; then
   PROJECT="$1"
   echo -e "\nℹ️   Progetto specificato: \e[1;32m$PROJECT\e[0m"
   shift
-fi
 
-SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
-PROJECT_PATH=$(realpath "$PROJECT")
-PROJECT_NAME=$(basename "$PROJECT_PATH")
+  PROJECT_PATH=$(realpath "$PROJECT")
+  PROJECT_NAME=$(basename "$PROJECT_PATH")
 
-echo -e "\n🔍  \e[1;33mSTEP 1:\e[0m Verifica cartella del progetto"
-if [ ! -d "$PROJECT_PATH" ]; then
-  echo "❌ La cartella del progetto non esiste: $PROJECT_PATH"
-  exit 1
-fi
+  echo -e "\n🔍  \e[1;33mSTEP 0:\e[0m Verifica cartella del progetto"
+  if [ ! -d "$PROJECT_PATH" ]; then
+    echo "❌ La cartella del progetto non esiste: $PROJECT_PATH"
+    exit 1
+  fi
 
-FRONTEND_DIR=$(find "$PROJECT_PATH" -maxdepth 1 -type d -name "*_frontend")
-if [ -n "$FRONTEND_DIR" ]; then
-  PROJECT_NAME=$(basename "$FRONTEND_DIR" | cut -d'_' -f1)
-else
-  echo "❌ Nessuna cartella *_frontend trovata in $PROJECT_PATH"
-  exit 1
+  FRONTEND_DIR=$(find "$PROJECT_PATH" -maxdepth 1 -type d -name "*_frontend")
+  if [ -n "$FRONTEND_DIR" ]; then
+    PROJECT_NAME=$(basename "$FRONTEND_DIR" | cut -d'_' -f1)
+  else
+    echo "❌ Nessuna cartella *_frontend trovata in $PROJECT_PATH"
+    exit 1
+  fi
 fi
 
 # --- 🗑️ STEP 1: Rimuovo struttura precedente se esistente ---
@@ -83,7 +89,17 @@ echo -e "  ➕ $LOGS"
 
 # --- 📂 STEP 4.1: Creo struttura progetto se specificato ---
 if [ -n "$PROJECT_NAME" ]; then
-  ROOT="$WWWROOT/apps/$PROJECT_NAME"
+
+  read -rp $'\n\e[1;33m📌  È il progetto principale? [\e[1;32my/\e[1;31mN\e[0m] (default N): ' IS_MAIN
+  IS_MAIN=${IS_MAIN:-n}     # default n
+  IS_MAIN=${IS_MAIN,,}      # lowercase
+
+  if [[ "$IS_MAIN" == "y" ]]; then
+    ROOT="$WWWROOT/$PROJECT_NAME"
+  else
+    ROOT="$WWWROOT/apps/$PROJECT_NAME"
+  fi
+
   FRONT="$ROOT/frontend"
   BACK="$ROOT/backend"
   echo -e "\n📂  \e[1;33mSTEP 4.1:\e[0m Creo struttura per progetto '\e[1;32m$PROJECT_NAME\e[0m' in \e[1;32m$MODE\e[0m"
