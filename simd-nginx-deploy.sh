@@ -209,13 +209,41 @@ server {
 
   access_log  $WWWLOGS/${PROJECT_NAME}_api_access.log;
   error_log   $WWWLOGS/${PROJECT_NAME}_api_error.log;
-  }
 }
 EOF
 
-echo -e "\n🗂️   \e[1;33mSTEP 5:\e[0m Creazione directory e file di log (simulazione)"
+# Determina se il progetto è sotto "apps"
+if [[ -d "$DEPLOY_ROOT$WWWROOT/apps/$PROJECT_NAME" ]]; then
+  REL_PATH="apps/$PROJECT_NAME"
+  FRONT_LOC=$(cat <<EOF
+  # redirect /$REL_PATH → /$REL_PATH/
+  location = /$REL_PATH {
+    return 301 /$REL_PATH/;
+  }
 
-# Percorso completo dei log in ambiente simulato
+  # SPA sotto /$REL_PATH/
+  location /$REL_PATH/ {
+    alias $WWWROOT/$REL_PATH/frontend/browser/;
+    index index.html;
+    try_files \$uri \$uri/ /$REL_PATH/index.html;
+  }
+EOF
+)
+else
+  REL_PATH="$PROJECT_NAME"
+  FRONT_ROOT="  root   $WWWROOT/$REL_PATH/frontend/browser;
+  index  index.html;"
+  FRONT_LOC=$(cat <<EOF
+
+  location / {
+    try_files \$uri \$uri/ /index.html;
+  }
+EOF
+)
+fi
+
+# Creo la directory dei log per il progetto (in base alla struttura)
+echo -e "\n🗂️   \e[1;33mSTEP 5:\e[0m Creazione directory e file di log (simulazione)"
 SIM_LOG_DIR="$DEPLOY_ROOT$WWWLOGS/$PROJECT_NAME"
 
 # Crea la directory dei log se non esiste
@@ -227,12 +255,7 @@ else
 fi
 
 # Elenco dei file di log da creare
-LOG_FILES=(
-  "${PROJECT_NAME}_front_access.log"
-  "${PROJECT_NAME}_front_error.log"
-  "${PROJECT_NAME}_api_access.log"
-  "${PROJECT_NAME}_api_error.log"
-)
+LOG_FILES=( "${PROJECT_NAME}_front_access.log" "${PROJECT_NAME}_front_error.log" "${PROJECT_NAME}_api_access.log" "${PROJECT_NAME}_api_error.log" )
 
 # Creazione dei file di log se non esistono
 for LOG_FILE in "${LOG_FILES[@]}"; do
@@ -244,6 +267,7 @@ for LOG_FILE in "${LOG_FILES[@]}"; do
     echo "  ✅ File log già presente: $FULL_PATH"
   fi
 done
+
 
 # 📜 STEP 6: Riepilogo variabili
 echo -e "\nℹ️   \e[1;33mSTEP 6:\e[0m Riepilogo variabili di deploy"

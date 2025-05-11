@@ -101,7 +101,7 @@ sudo ln -s "$SA_CONF" "$SE_CONF"
 echo -e "    ➤ Symlink creato: $SE_CONF → $SA_CONF"
 
 # ─── STEP 7: Deploy del progetto ───
-echo -e "\n🌍  \e[1;33mSTEP 7:\e[0m Deploy del progetto"
+echo -e "\n 🌍  \e[1;33mSTEP 7:\e[0m Deploy del progetto"
 
 if [[ -d "$WWW_SRC/apps/$PROJECT_NAME" ]]; then
   PROJECT_SRC="$WWW_SRC/apps/$PROJECT_NAME"
@@ -116,7 +116,31 @@ if [[ ! -d "$PROJECT_SRC" ]]; then
   exit 1
 fi
 
+# Controlla se la cartella di destinazione esiste già
+if [[ -d "$PROJECT_DEST" ]]; then
+  # Chiede conferma all'utente per eliminare il progetto esistente
+  read -p "Il progetto '$PROJECT_NAME' esiste già nella destinazione. Vuoi eliminarlo e continuare? (y/n): " CONFIRMATION
+  if [[ "$CONFIRMATION" =~ ^[Yy]$ ]]; then
+    echo -e "\n 🔴 Elimino la cartella esistente: $PROJECT_DEST"
+
+    # Prendi possesso della cartella e dei suoi contenuti
+    sudo chown -R $USER:$USER "$PROJECT_DEST"
+
+    # Rimuovi l'attributo immutabile da tutti i file all'interno
+    sudo chattr -i -R "$PROJECT_DEST"
+
+    # Rimuovi la cartella
+    sudo rm -rf "$PROJECT_DEST"  # Rimuove la cartella esistente
+  else
+    echo "❌ Setup annullato. Il progetto non verrà sovrascritto."
+    exit 1  # Esce dallo script
+  fi
+fi
+
+# Crea la cartella di destinazione
 sudo mkdir -p "$PROJECT_DEST"
+
+# Sincronizza il progetto
 sudo rsync -a --delete "$PROJECT_SRC"/ "$PROJECT_DEST"/
 echo -e "    ➤ Copiato: $PROJECT_SRC → $PROJECT_DEST"
 
@@ -131,18 +155,39 @@ echo -e "\n📤  \e[1;33mSTEP 9:\e[0m Copio file di log del progetto"
 SRC_LOG_DIR="$LOGS_SRC/$PROJECT_NAME"
 DEST_LOG_DIR="$LOGS_DEST/$PROJECT_NAME"
 
-sudo mkdir -p "$DEST_LOG_DIR"
+# Rimuovi la directory di log di destinazione se esiste
+if [[ -d "$DEST_LOG_DIR" ]]; then
+  sudo rm -rf "$DEST_LOG_DIR"
+  echo "    🗑️  Rimosso: $DEST_LOG_DIR"
+  sudo mkdir -p "$DEST_LOG_DIR"
+  echo "    ➕  Creato: $DEST_LOG_DIR"
+else
+  sudo mkdir -p "$DEST_LOG_DIR"
+  echo "    ➕  Creato: $DEST_LOG_DIR"
+fi
+
+echo "     ➤  Copio log da: $SRC_LOG_DIR a $DEST_LOG_DIR"
+
 LOG_FILES=(
   "${PROJECT_NAME}_front_access.log"
   "${PROJECT_NAME}_front_error.log"
   "${PROJECT_NAME}_api_access.log"
   "${PROJECT_NAME}_api_error.log"
 )
+
 for LOG_FILE in "${LOG_FILES[@]}"; do
   SRC="$SRC_LOG_DIR/$LOG_FILE"
   DEST="$DEST_LOG_DIR/$LOG_FILE"
-  [[ -f "$SRC" ]] && sudo cp "$SRC" "$DEST" && echo "  📄 Copiato: $SRC → $DEST" || echo "  ⚠️  Mancante: $SRC"
+  
+  if [[ -f "$SRC" ]]; then
+    sudo cp -v "$SRC" "$DEST"
+    echo "  📄 Copiato: $SRC → $DEST"
+  else
+    echo "  ⚠️  Mancante: $SRC"
+  fi
 done
+
+exit 1
 
 # ─── STEP 10: Verifica configurazione NGINX ───
 echo -e "\n🔍  \e[1;33mSTEP 10:\e[0m Verifica configurazione NGINX"
@@ -173,7 +218,7 @@ echo -e "    🔗 Backend  ➝ http://localhost:$BACK_PORT/"
 
 # ─── STEP 13: Cleanup ───
 echo -e "\n🧹  \e[1;33mSTEP 13:\e[0m Pulizia cartelle temporanee"
-sudo rm -rf "$DEPLOY_ROOT"
+# sudo rm -rf "$DEPLOY_ROOT"
 
 # ─── STEP 14: Fine ───
 echo -e "\n✅  \e[1;32mSTEP 14:\e[0m Deploy completato con successo: $PROJECT_NAME ($MODE)\e[0m"

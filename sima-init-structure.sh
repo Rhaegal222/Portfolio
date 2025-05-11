@@ -94,12 +94,12 @@ if [ -n "$PROJECT_NAME" ]; then
   IS_MAIN=${IS_MAIN:-n}     # default n
   IS_MAIN=${IS_MAIN,,}      # lowercase
 
+  LOGS="$WWWLOGS/$PROJECT_NAME"
+
   if [[ "$IS_MAIN" == "y" ]]; then
     ROOT="$WWWROOT/$PROJECT_NAME"
-    LOGS="$WWWLOGS/$PROJECT_NAME"
   else
     ROOT="$WWWROOT/apps/$PROJECT_NAME"
-    LOGS="$WWWLOGS/apps/$PROJECT_NAME"
   fi
 
   FRONT="$ROOT/frontend"
