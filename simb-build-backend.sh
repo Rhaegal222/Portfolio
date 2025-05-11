@@ -49,7 +49,7 @@ echo -e "\nℹ️   \e[1;32mRiepilogo del progetto\e[0m\n"
 echo -e "  ➤  Modalità di deploy: \e[1;33m$MODE\e[0m"
 echo -e "  ➤  Nome progetto:      \e[1;33m$PROJECT_NAME\e[0m"
 echo -e "  ➤  Percorso progetto:  \e[1;33m$PROJECT_PATH\e[0m"
-echo -e "  ➤  Backend trovato:   \e[1;33m$BACKEND_DIR\e[0m"
+echo -e "  ➤  Backend trovato:    \e[1;33m$BACKEND_DIR\e[0m"
 
 # Verifica che il progetto Laravel (composer.json) sia presente nella cartella _backend
 echo -e "\n🔍  \e[1;33mSTEP 2:\e[0m Verifico presenza composer.json in $BACKEND_DIR"

@@ -25,6 +25,22 @@ if [ -n "$1" ]; then
 fi
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+PROJECT_PATH=$(realpath "$PROJECT")
+PROJECT_NAME=$(basename "$PROJECT_PATH")
+
+echo -e "\n🔍  \e[1;33mSTEP 1:\e[0m Verifica cartella del progetto"
+if [ ! -d "$PROJECT_PATH" ]; then
+  echo "❌ La cartella del progetto non esiste: $PROJECT_PATH"
+  exit 1
+fi
+
+FRONTEND_DIR=$(find "$PROJECT_PATH" -maxdepth 1 -type d -name "*_frontend")
+if [ -n "$FRONTEND_DIR" ]; then
+  PROJECT_NAME=$(basename "$FRONTEND_DIR" | cut -d'_' -f1)
+else
+  echo "❌ Nessuna cartella *_frontend trovata in $PROJECT_PATH"
+  exit 1
+fi
 
 # --- 🗑️ STEP 1: Rimuovo struttura precedente se esistente ---
 if [ -d "$SCRIPT_DIR/deploy" ]; then
@@ -66,11 +82,11 @@ mkdir -p "$LOGS"
 echo -e "  ➕ $LOGS"
 
 # --- 📂 STEP 4.1: Creo struttura progetto se specificato ---
-if [ -n "$PROJECT" ]; then
-  ROOT="$WWWROOT/apps/$PROJECT"
+if [ -n "$PROJECT_NAME" ]; then
+  ROOT="$WWWROOT/apps/$PROJECT_NAME"
   FRONT="$ROOT/frontend"
   BACK="$ROOT/backend"
-  echo -e "\n📂  \e[1;33mSTEP 4.1:\e[0m Creo struttura per progetto '\e[1;32m$PROJECT\e[0m' in \e[1;32m$MODE\e[0m"
+  echo -e "\n📂  \e[1;33mSTEP 4.1:\e[0m Creo struttura per progetto '\e[1;32m$PROJECT_NAME\e[0m' in \e[1;32m$MODE\e[0m"
   mkdir -p "$FRONT" "$BACK"
   echo -e "  ➕ $FRONT"
   echo -e "  ➕ $BACK"
