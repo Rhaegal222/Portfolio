@@ -10,12 +10,6 @@ if [[ $EUID -ne 0 ]]; then
   exec sudo "$0" "$@"
 fi
 
-# Controlla che lo script venga eseguito con i permessi di root
-if [[ $EUID -ne 0 ]]; then
-  echo "❌ Questo script deve essere eseguito con i permessi di root. Esegui con sudo."
-  exec sudo "$0" "$@"
-fi
-
 # 📍 Parametri
 echo -e "\n🔍  \e[1;33mSTEP 0:\e[0m Verifico modalità di esecuzione: \e[1;32m$1\e[0m"
 if [[ "$1" != "-dev" && "$1" != "-prod" ]]; then
@@ -91,6 +85,15 @@ else
   BASE_DIR="$SCRIPT_DIR/deploy/www/wwwroot/$MODE/apps/$PROJECT_NAME"
 fi
 
+if [[ "$IS_MAIN" == "y" ]]; then
+  BASE_HREF="/"
+  DEPLOY_URL="/"
+else
+  BASE_HREF="/apps/${PROJECT_NAME}/"
+  DEPLOY_URL="/apps/${PROJECT_NAME}/"
+fi
+echo -e "\nℹ️   \e[1;32mINFO:\e[0m base-href sarà \e[1;33m$BASE_HREF\e[0m"
+
 FRONTEND_DEST="$BASE_DIR/frontend"
 
 # 📁 Creazione della cartella di destinazione
@@ -154,8 +157,12 @@ echo -e "\n🔧  \e[1;33mSTEP 7.2:\e[0m Installazione delle dipendenze"
 npm install --silent
 
 # Prepara il comando di build
-CMD="npx ng build --configuration production --base-href \"$BASE_HREF\" \
-  --output-path=dist/frontend --delete-output-path=false"
+CMD="npx ng build \
+  --configuration production \
+  --base-href \"$BASE_HREF\" \
+  --deploy-url \"$DEPLOY_URL\" \
+  --output-path=dist/frontend \
+  --delete-output-path=false"
 
 echo -e "\nℹ️   \e[1;32mFile environment aggiornati\e[0m\n"
 echo -e "  ➤  apiUrl: \e[1;33m$API_URL\e[0m"
