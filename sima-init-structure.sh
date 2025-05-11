@@ -74,18 +74,18 @@ mkdir -p \
   "$SNIPPETS"
 
 # --- 🌐 STEP 3: Creo directory wwwroot ---
-DIR="wwwroot/$MODE"
-WWWROOT="$DEPLOY_ROOT/$DIR"
-echo -e "\n🌐  \e[1;33mSTEP 3:\e[0m Creo directory \e[1;32m$DIR\e[0m in \e[1;32m$WWWROOT\e[0m"
+DIR_WWWROOT="wwwroot/$MODE"
+WWWROOT="$DEPLOY_ROOT/$DIR_WWWROOT"
+echo -e "\n🌐  \e[1;33mSTEP 3:\e[0m Creo directory \e[1;32m$DIR_WWWROOT\e[0m in \e[1;32m$WWWROOT\e[0m"
 mkdir -p "$WWWROOT"
 echo -e "  ➕ $WWWROOT"
 
 # --- 🗄️ STEP 4: Creo directory dei log per $MODE ---
-LOGS_BASE="$DEPLOY_ROOT/wwwlogs"
-LOGS="$LOGS_BASE/$MODE"
-echo -e "\n🗄️  \e[1;33mSTEP 4:\e[0m Creo directory log per \e[1;32m$MODE\e[0m"
-mkdir -p "$LOGS"
-echo -e "  ➕ $LOGS"
+DIR_WWWLOGS="wwwlogs/$MODE"
+WWWLOGS="$DEPLOY_ROOT/$DIR_WWWLOGS"
+echo -e "\n🗄️  \e[1;33mSTEP 4:\e[0m Creo directory \e[1;32m$DIR_WWWLOGS\e[0m in \e[1;32m$WWWLOGS\e[0m"
+mkdir -p "$WWWLOGS"
+echo -e "  ➕ $WWWLOGS"
 
 # --- 📂 STEP 4.1: Creo struttura progetto se specificato ---
 if [ -n "$PROJECT_NAME" ]; then
@@ -96,16 +96,19 @@ if [ -n "$PROJECT_NAME" ]; then
 
   if [[ "$IS_MAIN" == "y" ]]; then
     ROOT="$WWWROOT/$PROJECT_NAME"
+    LOGS="$WWWLOGS/$PROJECT_NAME"
   else
     ROOT="$WWWROOT/apps/$PROJECT_NAME"
+    LOGS="$WWWLOGS/apps/$PROJECT_NAME"
   fi
 
   FRONT="$ROOT/frontend"
   BACK="$ROOT/backend"
   echo -e "\n📂  \e[1;33mSTEP 4.1:\e[0m Creo struttura per progetto '\e[1;32m$PROJECT_NAME\e[0m' in \e[1;32m$MODE\e[0m"
-  mkdir -p "$FRONT" "$BACK"
+  mkdir -p "$FRONT" "$BACK" "$LOGS"
   echo -e "  ➕ $FRONT"
   echo -e "  ➕ $BACK"
+  echo -e "  ➕ $LOGS"
 fi
 
 # --- 🔎 STEP 5: Trovo porte libere ---

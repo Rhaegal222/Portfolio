@@ -13,7 +13,7 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # 📍 STEP 0: Parametri
-echo -e "\n🔍  \e[1;33mSTEP 0:\e[0m Verifico modalità di esecuzione"
+echo -e "\n🔍  \e[1;32m[SIM]\e[0m \e[1;33mSTEP 0:\e[0m Verifico modalità di esecuzione"
 if [[ "${1:-}" != "-dev" && "${1:-}" != "-prod" ]]; then
   echo "❌ Uso corretto: $0 -dev|-prod <percorso_progetto>"
   exit 1
@@ -35,7 +35,7 @@ PROJECT_PATH=$(readlink -f "$PROJECT")
 PROJECT_NAME=$(basename "$PROJECT_PATH")
 
 # 📂 STEP 1: Verifica cartella del progetto (simulazione)
-echo -e "\n🔍  \e[1;33mSTEP 1:\e[0m Verifica cartella del progetto"
+echo -e "\n🔍  \e[1;32m[SIM]\e[0m \e[1;33mSTEP 1:\e[0m Verifica cartella del progetto"
 if [ ! -d "$PROJECT_PATH" ]; then
   echo "❌ La cartella del progetto non esiste: $PROJECT_PATH"
   exit 1
@@ -58,8 +58,6 @@ else
   exit 1
 fi
 
-# ─── Percorsi di simulazione ───
-DEPLOY_ROOT="$SCRIPT_DIR/deploy/www"
 PORTS_FILE="$SCRIPT_DIR/deploy/assigned_ports.env"
 
 # 📥 Carico porte e le espongo
@@ -71,7 +69,6 @@ source "$PORTS_FILE"
 export FRONT_PORT BACK_PORT
 
 # variabili di percorso usate in VHOST
-export DEV_DIR_PART="www/wwwroot/$MODE"
 export REL_PATH="$PROJECT_NAME"
 
 # socket PHP-FPM (se serve)
@@ -82,34 +79,33 @@ if [ -z "$PHP_SOCK" ]; then
 fi
 export PHP_SOCK
 
-# ─── Percorsi NGINX in simulazione ───
-WWWROOT="/www/wwwroot/$MODE"
-WWWLOGS="www/wwwlogs"
-NGINX_CONF_ROOT="$DEPLOY_ROOT/server/nginx/conf"
-CONF_D="$NGINX_CONF_ROOT/conf.d"
-NGINX_CONF="$NGINX_CONF_ROOT/nginx.conf"
-SITES_AVAIL="$NGINX_CONF_ROOT/sites-available/$MODE"
-SITES_ENABLED="$NGINX_CONF_ROOT/sites-enabled/$MODE"
-REAL_LOG_DIR="$DEPLOY_ROOT/wwwlogs/$MODE"
+# ─── Radice della simulazione ───
+DEPLOY_ROOT="$SCRIPT_DIR/deploy"
 
-# file VHOST simulato
+# ─── Percorsi Reali ───
+SERVER="/www/server"
+WWWROOT="/www/wwwroot/$MODE"
+WWWLOGS="/www/wwwlogs/$MODE"
+DIR_NGINX_CONF="$SERVER/nginx/conf"
+SITES_AVAIL="$DIR_NGINX_CONF/sites-available/$MODE"
+SITES_ENABLED="$DIR_NGINX_CONF/sites-enabled/$MODE"
+NGINX_CONF="$DIR_NGINX_CONF/nginx.conf"
+CONF_D="$DIR_NGINX_CONF/conf.d"
 VHOST_FILE="$SITES_AVAIL/${PROJECT_NAME}.conf"
 
 # 📂 STEP 2: Directory per VHOST
-echo -e "\n🔌  \e[1;33mSTEP 2:\e[0m Verifica directory per il VHOST (simulazione)"
-if [ ! -d "$SITES_AVAIL" ]; then
-  echo "  ➕ Creo $SITES_AVAIL"
-  mkdir -p "$SITES_AVAIL"
-else
-  echo "  ➤ Esiste $SITES_AVAIL"
+echo -e "\n🔌  \e[1;32m[SIM]\e[0m \e[1;33mSTEP 2:\e[0m Verifica directory per il VHOST (simulazione)"
+if [ ! -d "$DEPLOY_ROOT/$SITES_AVAIL" ]; then
+  echo "  ➕ Creo $DEPLOY_ROOT/$SITES_AVAIL"
+  mkdir -p "$DEPLOY_ROOT/$SITES_AVAIL"
 fi
 
 # 🔧 STEP 3: nginx.conf simulato
-echo -e "\n🔧  \e[1;33mSTEP 3:\e[0m Verifica file nginx.conf (simulazione)"
-if [ ! -f "$NGINX_CONF" ]; then
-  echo "  ➕ Creo $NGINX_CONF"
-  mkdir -p "$(dirname "$NGINX_CONF")"
-  cat > "$NGINX_CONF" <<'EOF'
+echo -e "\n🔧  \e[1;32m[SIM]\e[0m \e[1;33mSTEP 3:\e[0m Verifica file nginx.conf (simulazione)"
+if [ ! -f "$DEPLOY_ROOT/$NGINX_CONF" ]; then
+  echo -e "  ➕ Creo $DEPLOY_ROOT/$NGINX_CONF"
+  mkdir -p "$(dirname "$DEPLOY_ROOT/$NGINX_CONF")"
+cat > "$DEPLOY_ROOT/$NGINX_CONF" <<'EOF'
 user  www www;
 worker_processes auto;
 pid        /www/server/nginx/logs/nginx.pid;
@@ -148,35 +144,33 @@ http {
     include /www/server/panel/vhost/nginx/prod/*.conf;
 }
 EOF
-else
-  echo "  ➤ Esiste $NGINX_CONF"
 fi
 
 # 📂 STEP 4: VHOST simulato con variabili espanse
 echo -e "\n📂  \e[1;33mSTEP 4:\e[0m Verifica file VHOST (simulazione)"
-if [ ! -f "$VHOST_FILE" ]; then
-  echo "  ➕ Creo $VHOST_FILE"
-  cat > "$VHOST_FILE" <<EOF
+if [ ! -f "$DEPLOY_ROOT/$VHOST_FILE" ]; then
+  echo "  ➕ Creo $DEPLOY_ROOT/$VHOST_FILE"
+  cat > "$DEPLOY_ROOT/$VHOST_FILE" <<EOF
 server {
   listen       $FRONT_PORT;
   listen       [::]:$FRONT_PORT;
   server_name  _;
-  root         /$DEV_DIR_PART/$REL_PATH/frontend/browser;
+  root         $WWWROOT/$REL_PATH/frontend/browser;
   index        index.html;
 
   location / {
     try_files \$uri \$uri/ /index.html;
   }
 
-  access_log  $REAL_LOG_DIR/${PROJECT_NAME}_front_access.log;
-  error_log   $REAL_LOG_DIR/${PROJECT_NAME}_front_error.log;
+  access_log  $WWWLOGS/${PROJECT_NAME}_front_access.log;
+  error_log   $WWWLOGS/${PROJECT_NAME}_front_error.log;
 }
 
 server {
   listen       $BACK_PORT;
   listen       [::]:$BACK_PORT;
   server_name  _;
-  root         /$DEV_DIR_PART/$REL_PATH/backend/public;
+  root         $WWWROOT/$REL_PATH/backend/public;
   index        index.php;
 
   location / {
@@ -185,7 +179,7 @@ server {
 
   location ~ ^/index\\.php(/|\$) {
     fastcgi_pass   unix:$PHP_SOCK;
-    fastcgi_param  SCRIPT_FILENAME /$DEV_DIR_PART/$REL_PATH/backend/public\$fastcgi_script_name;
+    fastcgi_param  SCRIPT_FILENAME $WWWROOT/$REL_PATH/backend/public\$fastcgi_script_name;
     include        fastcgi_params;
   }
 
@@ -193,27 +187,59 @@ server {
     deny all;
   }
 
-  access_log  $REAL_LOG_DIR/${PROJECT_NAME}_api_access.log;
-  error_log   $REAL_LOG_DIR/${PROJECT_NAME}_api_error.log;
+  access_log  $WWWLOGS/${PROJECT_NAME}_api_access.log;
+  error_log   $WWWLOGS/${PROJECT_NAME}_api_error.log;
 }
 EOF
-else
-  echo "  ➤ Esiste $VHOST_FILE"
 fi
 
-# 📜 STEP 5: Riepilogo variabili
-echo -e "\nℹ️   \e[1;33mSTEP 5:\e[0m Riepilogo variabili di deploy"
-echo -e "  ➤  Modalità:   \e[1;33m$MODE\e[0m"
-echo -e "  ➤  Progetto:   \e[1;33m$PROJECT\e[0m"
-echo -e "  ➤  Nome:       \e[1;33m$PROJECT_NAME\e[0m"
-echo -e "  ➤  SCRIPT:     \e[1;33m$SCRIPT_DIR\e[0m"
-echo -e "  ➤  DEPLOY:     \e[1;33m$DEPLOY_ROOT\e[0m"
-echo -e "  ➤  WWWROOT:    \e[1;33m$WWWROOT\e[0m"
-echo -e "  ➤  LOGS:       \e[1;33m$REAL_LOG_DIR\e[0m"
-echo -e "  ➤  PHP_SOCK:   \e[1;33m$PHP_SOCK\e[0m"
-echo -e "  ➤  nginx.conf: \e[1;33m$NGINX_CONF\e[0m"
-echo -e "  ➤  vhost file: \e[1;33m$VHOST_FILE\e[0m"
-echo -e "  ➤  FRONT_PORT: \e[1;33m$FRONT_PORT\e[0m"
-echo -e "  ➤  BACK_PORT:  \e[1;33m$BACK_PORT\e[0m"
+echo -e "\n🗂️   \e[1;33mSTEP 5:\e[0m Creazione directory e file di log (simulazione)"
+
+# Percorso completo dei log in ambiente simulato
+SIM_LOG_DIR="$DEPLOY_ROOT/$WWWLOGS/$PROJECT_NAME"
+
+# Crea la directory dei log se non esiste
+if [ ! -d "$SIM_LOG_DIR" ]; then
+  echo "  ➕ Creo directory log: $SIM_LOG_DIR"
+  mkdir -p "$SIM_LOG_DIR"
+else
+  echo "  ✅ Directory log già presente: $SIM_LOG_DIR"
+fi
+
+# Elenco dei file di log da creare
+LOG_FILES=(
+  "${PROJECT_NAME}_front_access.log"
+  "${PROJECT_NAME}_front_error.log"
+  "${PROJECT_NAME}_api_access.log"
+  "${PROJECT_NAME}_api_error.log"
+)
+
+# Creazione dei file di log se non esistono
+for LOG_FILE in "${LOG_FILES[@]}"; do
+  FULL_PATH="$SIM_LOG_DIR/$LOG_FILE"
+  if [ ! -f "$FULL_PATH" ]; then
+    echo "  ➕ Creo file log: $FULL_PATH"
+    touch "$FULL_PATH"
+  else
+    echo "  ✅ File log già presente: $FULL_PATH"
+  fi
+done
+
+# 📜 STEP 6: Riepilogo variabili
+echo -e "\nℹ️   \e[1;33mSTEP 6:\e[0m Riepilogo variabili di deploy"
+echo -e "  ➤  Modalità:        \e[1;33m$MODE\e[0m"
+echo -e "  ➤  Progetto:        \e[1;33m$PROJECT\e[0m"
+echo -e "  ➤  Nome:            \e[1;33m$PROJECT_NAME\e[0m"
+echo -e "  ➤  SCRIPT:          \e[1;33m$SCRIPT_DIR\e[0m"
+echo -e "  ➤  DEPLOY:          \e[1;33m$DEPLOY_ROOT\e[0m"
+echo -e "  ➤  WWWROOT:         \e[1;33m$WWWROOT\e[0m"
+echo -e "  ➤  LOGS:            \e[1;33m$WWWLOGS\e[0m"
+echo -e "  ➤  PHP_SOCK:        \e[1;33m$PHP_SOCK\e[0m"
+echo -e "  ➤  nginx.conf:      \e[1;33m$NGINX_CONF\e[0m"
+echo -e "  ➤  sites-available: \e[1;33m$SITES_AVAIL\e[0m"
+echo -e "  ➤  sites-enabled:   \e[1;33m$SITES_ENABLED\e[0m"
+echo -e "  ➤  vhost file:      \e[1;33m$VHOST_FILE\e[0m"
+echo -e "  ➤  FRONT_PORT:      \e[1;33m$FRONT_PORT\e[0m"
+echo -e "  ➤  BACK_PORT:       \e[1;33m$BACK_PORT\e[0m"
 
 echo -e "\n✅  Simulazione completa: i file sono pronti in $DEPLOY_ROOT/server/nginx/conf"

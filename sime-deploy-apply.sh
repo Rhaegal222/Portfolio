@@ -6,122 +6,122 @@
 
 set -euo pipefail
 
+# ─── STEP 0: Verifica esecuzione con permessi di root ───
 if [[ $EUID -ne 0 ]]; then
   echo "❌ Questo script deve essere eseguito con i permessi di root. Esegui con sudo."
   exec sudo "$0" "$@"
 fi
 
-# --- STEP 0: Verifica parametro environment ---
-echo -e "\n🔍 \e[1;33mSTEP 0:\e[0m Verifico parametro environment"
+# ─── STEP 1: Verifica parametro environment ───
+echo -e "\n🔍  \e[1;33mSTEP 1:\e[0m Verifico parametro environment"
 if [[ "${1:-}" != "-dev" && "${1:-}" != "-prod" ]]; then
   echo -e "❌ \e[1;31mUso corretto:\e[0m $0 -dev|-prod"
   exit 1
 fi
-MODE=${1#-}
+MODE="${1#-}"
 
-# --- STEP 1: Definisco variabili di percorso ---
+# ─── STEP 2: Inizializzazione variabili ───
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEPLOY_ROOT="$SCRIPT_DIR/deploy/www"
+DEPLOY_ROOT="$SCRIPT_DIR/deploy"
 
-# Percorsi di configurazione e file di deploy
-CONF_SRC="$DEPLOY_ROOT/server/nginx/conf"
-WWW_SRC="$DEPLOY_ROOT/wwwroot/$MODE"
-LOGS_SRC="$DEPLOY_ROOT/wwwlogs/$MODE"
+# Percorsi sorgente (simulazione)
+CONF_SRC="$DEPLOY_ROOT/www/server/nginx/conf"
+WWW_SRC="$DEPLOY_ROOT/www/wwwroot/$MODE"
+LOGS_SRC="$DEPLOY_ROOT/www/wwwlogs/$MODE"
 
-# Destinazione finale
+# Percorsi destinazione (reale)
 CONF_DEST="/www/server/nginx/conf"
 WWW_DEST="/www/wwwroot/$MODE"
-LOGS_DEST="/www/wwwlogs"
+LOGS_DEST="/www/wwwlogs/$MODE"
 
-echo -e "\n🚀 \e[1;33mSTEP 1:\e[0m MODE=$MODE"
-echo -e "    ➤ DEPLOY_ROOT=$DEPLOY_ROOT"
-echo -e "    ➤ CONF_SRC=$CONF_SRC"
-echo -e "    ➤ WWW_SRC=$WWW_SRC"
-echo -e "    ➤ LOGS_SRC=$LOGS_SRC"
-echo -e "    ➤ CONF_DEST=$CONF_DEST"
-echo -e "    ➤ WWW_DEST=$WWW_DEST"
-echo -e "    ➤ LOGS_DEST=$LOGS_DEST"
+echo -e "\n🗂️  \e[1;33mSTEP 2:\e[0m Variabili inizializzate"
+echo -e "    ➤ MODE         = $MODE"
+echo -e "    ➤ DEPLOY_ROOT  = $DEPLOY_ROOT"
+echo -e "    ➤ CONF_SRC     = $CONF_SRC"
+echo -e "    ➤ WWW_SRC      = $WWW_SRC"
+echo -e "    ➤ LOGS_SRC     = $LOGS_SRC"
+echo -e "    ➤ CONF_DEST    = $CONF_DEST"
+echo -e "    ➤ WWW_DEST     = $WWW_DEST"
+echo -e "    ➤ LOGS_DEST    = $LOGS_DEST"
 
-# --- STEP 2: Trovo il progetto da deployare ---
-echo -e "\n📂 \e[1;33mSTEP 2:\e[0m Rilevo nome progetto in $WWW_SRC"
+# ─── STEP 3: Rilevo nome progetto ───
+echo -e "\n📂  \e[1;33mSTEP 3:\e[0m Rilevo nome progetto"
 PROJECT_NAME=$(find "$WWW_SRC" -mindepth 1 -maxdepth 1 -type d | head -n1 | xargs -r basename)
 if [[ -z "$PROJECT_NAME" ]]; then
-  echo -e "❌ \e[1;31mErrore:\e[0m Nessun progetto trovato in $WWW_SRC"
+  echo -e "❌ Nessun progetto trovato in $WWW_SRC"
   exit 1
 fi
 echo -e "    ➤ Progetto: $PROJECT_NAME"
 
-# --- STEP 3: Sincronizzo configurazione NGINX ---
-echo -e "\n🔁 \e[1;33mSTEP 3:\e[0m Sync configurazione NGINX"
+# ─── STEP 4: Sincronizzo configurazione NGINX ───
+echo -e "\n🔁  \e[1;33mSTEP 4:\e[0m Sincronizzo configurazione NGINX"
 for dir in conf.d snippets "sites-available/$MODE"; do
-  SRC_DIR="$CONF_SRC/$dir"
-  DEST_DIR="$CONF_DEST/$dir"
-  sudo mkdir -p "$DEST_DIR"
-  if [[ -d "$SRC_DIR" ]]; then
-    sudo cp -v "$SRC_DIR"/*.conf "$DEST_DIR"/ 2>/dev/null || true
-  fi
+  SRC="$CONF_SRC/$dir"
+  DEST="$CONF_DEST/$dir"
+  sudo mkdir -p "$DEST"
+  [[ -d "$SRC" ]] && sudo cp -v "$SRC"/*.conf "$DEST"/ 2>/dev/null || true
 done
 
-# --- STEP 4: Copio nginx.conf principale ---
-echo -e "\n📄 \e[1;33mSTEP 4:\e[0m Copio nginx.conf principale"
-if [[ -f "$CONF_SRC/nginx.conf" ]]; then
-  sudo cp -v "$CONF_SRC/nginx.conf" "$CONF_DEST/nginx.conf"
-fi
+# ─── STEP 5: Copio nginx.conf ───
+echo -e "\n📄  \e[1;33mSTEP 5:\e[0m Copio nginx.conf principale"
+[[ -f "$CONF_SRC/nginx.conf" ]] && sudo cp -v "$CONF_SRC/nginx.conf" "$CONF_DEST/nginx.conf"
 
-# --- STEP 5: Aggiorno il symlink del vhost ---
-echo -e "\n🔗 \e[1;33mSTEP 5:\e[0m Aggiorno symlink per $PROJECT_NAME"
+# ─── STEP 6: Aggiorno symlink del VHOST ───
+echo -e "\n🔗  \e[1;33mSTEP 6:\e[0m Aggiorno symlink VHOST"
 SA="$CONF_DEST/sites-available/$MODE"
 SE="$CONF_DEST/sites-enabled/$MODE"
 SA_CONF="$SA/$PROJECT_NAME.conf"
 SE_CONF="$SE/$PROJECT_NAME.conf"
 
-# Controllo se il file di configurazione esiste
-if [[ ! -f "$SA_CONF" ]]; then
-  echo -e "❌ \e[1;31mErrore:\e[0m $SA_CONF non trovato"
-  exit 1
-fi
+[[ ! -f "$SA_CONF" ]] && { echo -e "❌ Configurazione mancante: $SA_CONF"; exit 1; }
 
 sudo mkdir -p "$SE"
 sudo rm -f "$SE_CONF"
 sudo ln -s "$SA_CONF" "$SE_CONF"
-echo -e "    ➤ Symlink: $SE_CONF → $SA_CONF"
+echo -e "    ➤ Symlink creato: $SE_CONF → $SA_CONF"
 
-# --- STEP 6: Deploy del solo progetto (senza toccare gli altri) ---
-echo -e "\n🌍 \e[1;33mSTEP 6:\e[0m Deploy di $PROJECT_NAME in $WWW_DEST"
+# ─── STEP 7: Deploy progetto ───
+echo -e "\n🌍  \e[1;33mSTEP 7:\e[0m Deploy del progetto"
 PROJECT_SRC="$WWW_SRC/$PROJECT_NAME"
 PROJECT_DEST="$WWW_DEST/$PROJECT_NAME"
-if [[ ! -d "$PROJECT_SRC" ]]; then
-  echo -e "❌ \e[1;31mErrore:\e[0m $PROJECT_SRC non trovato"
-  exit 1
-fi
+
+[[ ! -d "$PROJECT_SRC" ]] && { echo -e "❌ Progetto non trovato: $PROJECT_SRC"; exit 1; }
+
 sudo mkdir -p "$PROJECT_DEST"
 sudo rsync -a --delete "$PROJECT_SRC"/ "$PROJECT_DEST"/
 echo -e "    ➤ Copiato: $PROJECT_SRC → $PROJECT_DEST"
 
-# --- STEP 7: Copio .env nel backend del progetto ---
-echo -e "\n🗝️  \e[1;33mSTEP 7:\e[0m Copio .env in $PROJECT_DEST/backend"
-if [[ -f "$PROJECT_SRC/backend/.env" ]]; then
-  sudo cp -v "$PROJECT_SRC/backend/.env" "$PROJECT_DEST/backend/.env"
-else
-  echo -e "⚠️  Attenzione: .env non esiste in $PROJECT_SRC/backend"
-fi
+# ─── STEP 8: Copio .env ───
+echo -e "\n🗝️   \e[1;33mSTEP 8:\e[0m Copio .env del backend"
+ENV_SRC="$PROJECT_SRC/backend/.env"
+ENV_DEST="$PROJECT_DEST/backend/.env"
+[[ -f "$ENV_SRC" ]] && sudo cp -v "$ENV_SRC" "$ENV_DEST" || echo "⚠️  Nessun .env trovato"
 
-# --- STEP 8: Trasferisco i log del progetto ---
-echo -e "\n📄 \e[1;33mSTEP 8:\e[0m Trasferisco log per $PROJECT_NAME"
-sudo mkdir -p "$LOGS_DEST"
+# ─── STEP 9: Copia file log ───
+echo -e "\n📤  \e[1;33mSTEP 9:\e[0m Copio file di log del progetto"
+SRC_LOG_DIR="$LOGS_SRC/$PROJECT_NAME"
+DEST_LOG_DIR="$LOGS_DEST/$PROJECT_NAME"
 
-for log in "$LOGS_SRC/${MODE}_${PROJECT_NAME}"*.log; do
-  if [[ -f "$log" ]]; then
-    sudo cp -v "$log" "$LOGS_DEST"/
-  fi
+sudo mkdir -p "$DEST_LOG_DIR"
+LOG_FILES=(
+  "${PROJECT_NAME}_front_access.log"
+  "${PROJECT_NAME}_front_error.log"
+  "${PROJECT_NAME}_api_access.log"
+  "${PROJECT_NAME}_api_error.log"
+)
+
+for LOG_FILE in "${LOG_FILES[@]}"; do
+  SRC="$SRC_LOG_DIR/$LOG_FILE"
+  DEST="$DEST_LOG_DIR/$LOG_FILE"
+  [[ -f "$SRC" ]] && sudo cp "$SRC" "$DEST" && echo "  📄 Copiato: $SRC → $DEST" || echo "  ⚠️  Mancante: $SRC"
 done
 
-# --- STEP 9: Verifico configurazione NGINX ---
-echo -e "\n🔍 \e[1;33mSTEP 9:\e[0m Verifico configurazione NGINX"
+# ─── STEP 10: Verifica configurazione NGINX ───
+echo -e "\n🔍  \e[1;33mSTEP 10:\e[0m Verifica configurazione NGINX"
 sudo /www/server/nginx/sbin/nginx -t
 
-# --- STEP 10: Ricarico o avvio NGINX ---
-echo -e "\n🔁 \e[1;33mSTEP 10:\e[0m Ricarico NGINX"
+# ─── STEP 11: Ricarico o avvio NGINX ───
+echo -e "\n🔁  \e[1;33mSTEP 11:\e[0m Ricarico o avvio NGINX"
 if sudo lsof -i :80 -sTCP:LISTEN >/dev/null; then
   sudo /www/server/nginx/sbin/nginx -s reload || {
     sudo pkill nginx
@@ -131,32 +131,26 @@ else
   sudo /www/server/nginx/sbin/nginx
 fi
 
-# --- STEP 11: Leggo le porte assegnate da file ---
-echo -e "\n🔢 \e[1;33mSTEP 11:\e[0m Leggo porte da assigned_ports.env"
-PORTS_FILE="$SCRIPT_DIR/deploy/assigned_ports.env"
-
-if [[ ! -f "$PORTS_FILE" ]]; then
-  echo -e "❌ \e[1;31mErrore:\e[0m File porte non trovato: $PORTS_FILE"
-  exit 1
-fi
-
+# ─── STEP 12: Stampo info porte ───
+echo -e "\n🔢  \e[1;33mSTEP 12:\e[0m Porte assegnate"
+PORTS_FILE="$DEPLOY_ROOT/assigned_ports.env"
+[[ -f "$PORTS_FILE" ]] || { echo "❌ File porte mancante: $PORTS_FILE"; exit 1; }
 source "$PORTS_FILE"
 
-if [[ -z "${FRONT_PORT:-}" || -z "${BACK_PORT:-}" ]]; then
-  echo -e "❌ \e[1;31mErrore:\e[0m FRONT_PORT o BACK_PORT non presenti nel file"
+[[ -z "${FRONT_PORT:-}" || -z "${BACK_PORT:-}" ]] && {
+  echo "❌ Variabili porte non presenti"
   exit 1
-fi
+}
 
-echo -e "    ➤ FRONT_PORT=$FRONT_PORT"
-echo -e "    ➤ BACK_PORT=$BACK_PORT"
-
-echo -e "\n🌐 \e[1;33mINFO:\e[0m URL simulazione attiva:"
+echo -e "    ➤ FRONT_PORT: $FRONT_PORT"
+echo -e "    ➤ BACK_PORT:  $BACK_PORT"
+echo -e "\n🌐  URL:"
 echo -e "    🔗 Frontend ➝ http://localhost:$FRONT_PORT/"
 echo -e "    🔗 Backend  ➝ http://localhost:$BACK_PORT/"
 
-# --- 🧹 STEP 12: Rimuovo directory di simulazione ---
-echo -e "\n🧹 \e[1;33mSTEP 12:\e[0m Rimuovo directory di simulazione"
-sudo rm -rf "$SCRIPT_DIR/deploy"
+# ─── STEP 13: Cleanup ───
+echo -e "\n🧹  \e[1;33mSTEP 13:\e[0m Pulizia cartelle temporanee"
+sudo rm -rf "$DEPLOY_ROOT"
 
-# --- STEP 13: Fine ---
-echo -e "\n✅ \e[1;32mSTEP 13:\e[0m Deploy ($MODE) di '$PROJECT_NAME' completato!\e[0m"
+# ─── STEP 14: Fine ───
+echo -e "\n✅  \e[1;32mSTEP 14:\e[0m Deploy completato con successo: $PROJECT_NAME ($MODE)\e[0m"
