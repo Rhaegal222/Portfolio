@@ -44,14 +44,24 @@ echo -e "    ➤ CONF_DEST    = $CONF_DEST"
 echo -e "    ➤ WWW_DEST     = $WWW_DEST"
 echo -e "    ➤ LOGS_DEST    = $LOGS_DEST"
 
-# ─── STEP 3: Rilevo nome progetto ───
+# ─── STEP 3: Rilevo nome e percorso progetto ───
 echo -e "\n📂  \e[1;33mSTEP 3:\e[0m Rilevo nome progetto"
-PROJECT_NAME=$(find "$WWW_SRC" -mindepth 1 -maxdepth 1 -type d | head -n1 | xargs -r basename)
+
+if [[ -d "$WWW_SRC/apps" ]]; then
+  PROJECT_NAME=$(find "$WWW_SRC/apps" -mindepth 1 -maxdepth 1 -type d | head -n1 | xargs -r basename)
+  PROJECT_PATH="$WWW_SRC/apps/$PROJECT_NAME"
+else
+  PROJECT_NAME=$(find "$WWW_SRC" -mindepth 1 -maxdepth 1 -type d | head -n1 | xargs -r basename)
+  PROJECT_PATH="$WWW_SRC/$PROJECT_NAME"
+fi
+
 if [[ -z "$PROJECT_NAME" ]]; then
   echo -e "❌ Nessun progetto trovato in $WWW_SRC"
   exit 1
 fi
+
 echo -e "    ➤ Progetto: $PROJECT_NAME"
+echo -e "    ➤ Percorso: $PROJECT_PATH"
 
 # ─── STEP 4: Sincronizzo configurazione NGINX ───
 echo -e "\n🔁  \e[1;33mSTEP 4:\e[0m Sincronizzo configurazione NGINX"
@@ -66,26 +76,45 @@ done
 echo -e "\n📄  \e[1;33mSTEP 5:\e[0m Copio nginx.conf principale"
 [[ -f "$CONF_SRC/nginx.conf" ]] && sudo cp -v "$CONF_SRC/nginx.conf" "$CONF_DEST/nginx.conf"
 
-# ─── STEP 6: Aggiorno symlink del VHOST ───
+# ─── STEP 6: Aggiorno symlink VHOST ───
 echo -e "\n🔗  \e[1;33mSTEP 6:\e[0m Aggiorno symlink VHOST"
+
 SA="$CONF_DEST/sites-available/$MODE"
 SE="$CONF_DEST/sites-enabled/$MODE"
-SA_CONF="$SA/$PROJECT_NAME.conf"
-SE_CONF="$SE/$PROJECT_NAME.conf"
 
-[[ ! -f "$SA_CONF" ]] && { echo -e "❌ Configurazione mancante: $SA_CONF"; exit 1; }
+# se esiste apps/<project>.conf lo uso, altrimenti root
+if [[ -f "$SA/apps/$PROJECT_NAME.conf" ]]; then
+  SA_CONF="$SA/apps/$PROJECT_NAME.conf"
+  SE_DIR="$SE/apps"
+elif [[ -f "$SA/$PROJECT_NAME.conf" ]]; then
+  SA_CONF="$SA/$PROJECT_NAME.conf"
+  SE_DIR="$SE"
+else
+  echo -e "❌ Configurazione mancante: né $SA/apps/$PROJECT_NAME.conf né $SA/$PROJECT_NAME.conf"
+  exit 1
+fi
 
-sudo mkdir -p "$SE"
+SE_CONF="$SE_DIR/$PROJECT_NAME.conf"
+sudo mkdir -p "$SE_DIR"
 sudo rm -f "$SE_CONF"
 sudo ln -s "$SA_CONF" "$SE_CONF"
 echo -e "    ➤ Symlink creato: $SE_CONF → $SA_CONF"
 
-# ─── STEP 7: Deploy progetto ───
+# ─── STEP 7: Deploy del progetto ───
 echo -e "\n🌍  \e[1;33mSTEP 7:\e[0m Deploy del progetto"
-PROJECT_SRC="$WWW_SRC/$PROJECT_NAME"
-PROJECT_DEST="$WWW_DEST/$PROJECT_NAME"
 
-[[ ! -d "$PROJECT_SRC" ]] && { echo -e "❌ Progetto non trovato: $PROJECT_SRC"; exit 1; }
+if [[ -d "$WWW_SRC/apps/$PROJECT_NAME" ]]; then
+  PROJECT_SRC="$WWW_SRC/apps/$PROJECT_NAME"
+  PROJECT_DEST="$WWW_DEST/apps/$PROJECT_NAME"
+else
+  PROJECT_SRC="$WWW_SRC/$PROJECT_NAME"
+  PROJECT_DEST="$WWW_DEST/$PROJECT_NAME"
+fi
+
+if [[ ! -d "$PROJECT_SRC" ]]; then
+  echo -e "❌ Progetto non trovato: $PROJECT_SRC"
+  exit 1
+fi
 
 sudo mkdir -p "$PROJECT_DEST"
 sudo rsync -a --delete "$PROJECT_SRC"/ "$PROJECT_DEST"/
@@ -109,7 +138,6 @@ LOG_FILES=(
   "${PROJECT_NAME}_api_access.log"
   "${PROJECT_NAME}_api_error.log"
 )
-
 for LOG_FILE in "${LOG_FILES[@]}"; do
   SRC="$SRC_LOG_DIR/$LOG_FILE"
   DEST="$DEST_LOG_DIR/$LOG_FILE"
@@ -136,12 +164,7 @@ echo -e "\n🔢  \e[1;33mSTEP 12:\e[0m Porte assegnate"
 PORTS_FILE="$DEPLOY_ROOT/assigned_ports.env"
 [[ -f "$PORTS_FILE" ]] || { echo "❌ File porte mancante: $PORTS_FILE"; exit 1; }
 source "$PORTS_FILE"
-
-[[ -z "${FRONT_PORT:-}" || -z "${BACK_PORT:-}" ]] && {
-  echo "❌ Variabili porte non presenti"
-  exit 1
-}
-
+[[ -z "${FRONT_PORT:-}" || -z "${BACK_PORT:-}" ]] && { echo "❌ Variabili porte non presenti"; exit 1; }
 echo -e "    ➤ FRONT_PORT: $FRONT_PORT"
 echo -e "    ➤ BACK_PORT:  $BACK_PORT"
 echo -e "\n🌐  URL:"

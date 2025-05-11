@@ -68,9 +68,6 @@ fi
 source "$PORTS_FILE"
 export FRONT_PORT BACK_PORT
 
-# variabili di percorso usate in VHOST
-export REL_PATH="$PROJECT_NAME"
-
 # socket PHP-FPM (se serve)
 PHP_SOCK=$(find /www/server/php/ -type s -name '*.sock' 2>/dev/null | head -n1)
 if [ -z "$PHP_SOCK" ]; then
@@ -102,10 +99,10 @@ fi
 
 # 🔧 STEP 3: nginx.conf simulato
 echo -e "\n🔧  \e[1;32m[SIM]\e[0m \e[1;33mSTEP 3:\e[0m Verifica file nginx.conf (simulazione)"
-if [ ! -f "$DEPLOY_ROOT/$NGINX_CONF" ]; then
-  echo -e "  ➕ Creo $DEPLOY_ROOT/$NGINX_CONF"
-  mkdir -p "$(dirname "$DEPLOY_ROOT/$NGINX_CONF")"
-cat > "$DEPLOY_ROOT/$NGINX_CONF" <<'EOF'
+if [ ! -f "$DEPLOY_ROOT$NGINX_CONF" ]; then
+  echo -e "  ➕ Creo $DEPLOY_ROOT$NGINX_CONF"
+  mkdir -p "$(dirname "$DEPLOY_ROOT$NGINX_CONF")"
+cat > "$DEPLOY_ROOT$NGINX_CONF" <<'EOF'
 user  www www;
 worker_processes auto;
 pid        /www/server/nginx/logs/nginx.pid;
@@ -146,24 +143,49 @@ http {
 EOF
 fi
 
-# 📂 STEP 4: VHOST simulato con variabili espanse
-echo -e "\n📂  \e[1;33mSTEP 4:\e[0m Verifica file VHOST (simulazione)"
-if [ ! -f "$DEPLOY_ROOT/$VHOST_FILE" ]; then
-  echo "  ➕ Creo $DEPLOY_ROOT/$VHOST_FILE"
-  cat > "$DEPLOY_ROOT/$VHOST_FILE" <<EOF
-server {
-  listen       $FRONT_PORT;
-  listen       [::]:$FRONT_PORT;
-  server_name  _;
-  root         $WWWROOT/$REL_PATH/frontend/browser;
-  index        index.html;
+# STEP 3: REL_PATH
+if [[ -d "$DEPLOY_ROOT$WWWROOT/apps/$PROJECT_NAME" ]]; then
+  REL_PATH="apps/$PROJECT_NAME"
+  # useremo alias per il frontend
+  FRONT_ROOT=""  
+  FRONT_LOC=$(cat <<EOF
+  # redirect /$REL_PATH → /$REL_PATH/
+  location = /$REL_PATH {
+    return 301 /$REL_PATH/;
+  }
+
+  # SPA sotto /$REL_PATH/
+  location /$REL_PATH/ {
+    alias $WWWROOT/$REL_PATH/frontend/browser/;
+    index index.html;
+    try_files \$uri \$uri/ /$REL_PATH/index.html;
+  }
+EOF
+)
+else
+  REL_PATH="$PROJECT_NAME"
+  # root “normale” per il principale
+  FRONT_ROOT="  root   $WWWROOT/$REL_PATH/frontend/browser;
+  index  index.html;"
+  FRONT_LOC=$(cat <<EOF
 
   location / {
     try_files \$uri \$uri/ /index.html;
   }
+EOF
+)
+fi
 
-  access_log  $WWWLOGS/${PROJECT_NAME}_front_access.log;
-  error_log   $WWWLOGS/${PROJECT_NAME}_front_error.log;
+# STEP 4: genero il VHOST
+cat > "$DEPLOY_ROOT$VHOST_FILE" <<EOF
+server {
+  listen       $FRONT_PORT;
+  listen       [::]:$FRONT_PORT;
+  server_name  _;
+  access_log   $WWWLOGS/${PROJECT_NAME}_front_access.log;
+  error_log    $WWWLOGS/${PROJECT_NAME}_front_error.log;
+$FRONT_ROOT
+$FRONT_LOC
 }
 
 server {
@@ -183,20 +205,17 @@ server {
     include        fastcgi_params;
   }
 
-  location ~ /\\.(?!well-known).* {
-    deny all;
-  }
+  location ~ /\\.(?!well-known).* { deny all; }
 
   access_log  $WWWLOGS/${PROJECT_NAME}_api_access.log;
   error_log   $WWWLOGS/${PROJECT_NAME}_api_error.log;
 }
 EOF
-fi
 
 echo -e "\n🗂️   \e[1;33mSTEP 5:\e[0m Creazione directory e file di log (simulazione)"
 
 # Percorso completo dei log in ambiente simulato
-SIM_LOG_DIR="$DEPLOY_ROOT/$WWWLOGS/$PROJECT_NAME"
+SIM_LOG_DIR="$DEPLOY_ROOT$WWWLOGS/$PROJECT_NAME"
 
 # Crea la directory dei log se non esiste
 if [ ! -d "$SIM_LOG_DIR" ]; then
