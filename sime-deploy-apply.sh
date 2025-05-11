@@ -123,11 +123,11 @@ if [[ -d "$PROJECT_DEST" ]]; then
   if [[ "$CONFIRMATION" =~ ^[Yy]$ ]]; then
     echo -e "\n 🔴 Elimino la cartella esistente: $PROJECT_DEST"
 
-    # Prendi possesso della cartella e dei suoi contenuti
-    sudo chown -R $USER:$USER "$PROJECT_DEST"
-
     # Rimuovi l'attributo immutabile da tutti i file all'interno
     sudo chattr -i -R "$PROJECT_DEST"
+
+    # Prendi possesso della cartella e dei suoi contenuti
+    sudo chown -R $USER:$USER "$PROJECT_DEST"
 
     # Rimuovi la cartella
     sudo rm -rf "$PROJECT_DEST"  # Rimuove la cartella esistente
@@ -186,8 +186,6 @@ for LOG_FILE in "${LOG_FILES[@]}"; do
     echo "  ⚠️  Mancante: $SRC"
   fi
 done
-
-exit 1
 
 # ─── STEP 10: Verifica configurazione NGINX ───
 echo -e "\n🔍  \e[1;33mSTEP 10:\e[0m Verifica configurazione NGINX"

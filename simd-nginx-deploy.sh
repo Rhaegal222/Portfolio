@@ -182,8 +182,8 @@ server {
   listen       $FRONT_PORT;
   listen       [::]:$FRONT_PORT;
   server_name  _;
-  access_log   $WWWLOGS/${PROJECT_NAME}_front_access.log;
-  error_log    $WWWLOGS/${PROJECT_NAME}_front_error.log;
+  access_log   $WWWLOGS/$PROJECT_NAME/${PROJECT_NAME}_front_access.log;
+  error_log    $WWWLOGS/$PROJECT_NAME/${PROJECT_NAME}_front_error.log;
 $FRONT_ROOT
 $FRONT_LOC
 }
@@ -207,8 +207,8 @@ server {
 
   location ~ /\\.(?!well-known).* { deny all; }
 
-  access_log  $WWWLOGS/${PROJECT_NAME}_api_access.log;
-  error_log   $WWWLOGS/${PROJECT_NAME}_api_error.log;
+  access_log  $WWWLOGS/$PROJECT_NAME/${PROJECT_NAME}_api_access.log;
+  error_log   $WWWLOGS/$PROJECT_NAME/${PROJECT_NAME}_api_error.log;
 }
 EOF
 
