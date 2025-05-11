@@ -41,7 +41,7 @@ echo "🔨 Build frontend in ambiente DEV..."
 sudo ./simc-build-frontend.sh -dev "$PROJECT"
 
 # --- Generazione configurazione NGINX simulata ---
-echo "\n⚙️ Genero configurazione NGINX simulata..."
+echo -e "\n⚙️ Genero configurazione NGINX simulata..."
 sudo ./simd-nginx-deploy.sh -dev "$PROJECT"
 
 # --- Applicazione della configurazione come reale ---
