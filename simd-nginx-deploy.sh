@@ -130,7 +130,7 @@ http {
 
     ssl_protocols       TLSv1.2 TLSv1.3;
     ssl_prefer_server_ciphers on;
-    ssl_ciphers         'ECDHE-ECDSA-CHACHA20-POLY1305:...';
+    ssl_ciphers         'ECDHE-ECDSA-CHACHA20-POLY1305:...'; # Usa la stringa cifrata adeguata
 
     include conf.d/*.conf;
     include sites-enabled/dev/*.conf;
@@ -139,6 +139,14 @@ http {
     include /www/server/panel/vhost/nginx/*.conf;
     include /www/server/panel/vhost/nginx/dev/*.conf;
     include /www/server/panel/vhost/nginx/prod/*.conf;
+}
+
+stream {
+    log_format tcp_format '$time_local|$remote_addr|$protocol|$status|$bytes_sent|$bytes_received|$session_time|$upstream_addr|$upstream_bytes_sent|$upstream_bytes_received|$upstream_connect_time';
+  
+    access_log /www/wwwlogs/tcp-access.log tcp_format;
+    error_log /www/wwwlogs/tcp-error.log;
+    include /www/server/panel/vhost/nginx/tcp/*.conf;
 }
 EOF
 fi
