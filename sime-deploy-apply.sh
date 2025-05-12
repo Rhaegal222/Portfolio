@@ -94,21 +94,35 @@ copy_main_conf() {
 }
 
 update_vhost_symlink() {
-  echo -e "\n🔗  \e[1;33mSTEP 6:\e[0m Aggiorno symlink VHOST"
+  echo -e "\n🔗  STEP 6: Aggiorno symlink VHOST"
+
+  # cartella base di conf.d
   local BASE="$CONF_DEST/conf.d"
-  local SUB="${VHOST_SUBDIR#/}"
-  local SA_DIR="$BASE/sites-available/$MODE${SUB:+/$SUB}"
-  local SE_DIR="$BASE/sites-enabled/$MODE${SUB:+/$SUB}"
-  local SA_CONF="$SA_DIR/${PROJECT_NAME}.conf"
+  # directory sites-available ed enabled per questo MODE
+  local SA_BASE="$BASE/sites-available/$MODE"
+  local SE_BASE="$BASE/sites-enabled/$MODE"
+
+  # se il progetto è sotto apps/, usiamo la sottocartella apps
+  if [[ -d "$WWW_DEST/apps/$PROJECT_NAME" ]]; then
+    SA_DIR="$SA_BASE/apps"
+    SE_DIR="$SE_BASE/apps"
+  else
+    SA_DIR="$SA_BASE"
+    SE_DIR="$SE_BASE"
+  fi
+
+  # percorso del file .conf
+  local SA_CONF="$SA_DIR/$PROJECT_NAME.conf"
 
   if [[ ! -f "$SA_CONF" ]]; then
     echo "❌ Configurazione mancante: $SA_CONF"
     exit 1
   fi
 
+  # creiamo la dir enabled e colleghiamo
   mkdir -p "$SE_DIR"
-  ln -sf "$SA_CONF" "$SE_DIR/${PROJECT_NAME}.conf"
-  echo "    ➤ Symlink creato: $SE_DIR/${PROJECT_NAME}.conf → $SA_CONF"
+  ln -sf "$SA_CONF" "$SE_DIR/$PROJECT_NAME.conf"
+  echo "    ➤ Symlink creato: $SE_DIR/$PROJECT_NAME.conf → $SA_CONF"
 }
 
 deploy_project() {
@@ -140,18 +154,21 @@ copy_env() {
 }
 
 copy_logs() {
-  echo -e "\n📤  \e[1;33mSTEP 9:\e[0m Copio file di log"
-  # Se progetto secondario
+  echo -e "\n📤  STEP 9: Copio file di log"
+
+  # Determino il percorso relativo dei log (con o senza "apps/")
   if [[ -d "$LOGS_SRC/apps/$PROJECT_NAME" ]]; then
-    SRC_LOG_DIR="$LOGS_SRC/apps/$PROJECT_NAME"
-    DEST_LOG_DIR="$LOGS_DEST/apps/$PROJECT_NAME"
+    REL_LOG_PATH="apps/$PROJECT_NAME"
   else
-    SRC_LOG_DIR="$LOGS_SRC/$PROJECT_NAME"
-    DEST_LOG_DIR="$LOGS_DEST/$PROJECT_NAME"
+    REL_LOG_PATH="$PROJECT_NAME"
   fi
 
-  rm -rf "$DEST_LOG_DIR"
-  mkdir -p "$DEST_LOG_DIR"
+  SRC_LOG_DIR="$LOGS_SRC/$REL_LOG_PATH"
+  DEST_LOG_DIR="$LOGS_DEST/$REL_LOG_PATH"
+
+  # Ricreo la destinazione da zero
+  sudo rm -rf "$DEST_LOG_DIR"
+  sudo mkdir -p "$DEST_LOG_DIR"
   echo "    ➤ Src logs: $SRC_LOG_DIR"
   echo "    ➤ Dst logs: $DEST_LOG_DIR"
 
@@ -159,7 +176,7 @@ copy_logs() {
     LOG_SRC="$SRC_LOG_DIR/${PROJECT_NAME}_${f}.log"
     LOG_DST="$DEST_LOG_DIR/${PROJECT_NAME}_${f}.log"
     if [[ -f "$LOG_SRC" ]]; then
-      cp -v "$LOG_SRC" "$LOG_DST"
+      sudo cp -v "$LOG_SRC" "$LOG_DST"
     else
       echo "  ⚠️  Mancante: $LOG_SRC"
     fi
