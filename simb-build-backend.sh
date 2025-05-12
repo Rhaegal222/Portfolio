@@ -1,123 +1,144 @@
-#!/bin/bash
-
+#!/usr/bin/env bash
+#
 # simb-build-backend.sh
 # Prepara il backend Laravel per il deploy
 
-set -e
+set -euo pipefail
 
-if [[ $EUID -ne 0 ]]; then
-  echo "❌ Questo script deve essere eseguito con i permessi di root. Esegui con sudo."
-  exec sudo "$0" "$@"
-fi
+# ─── Funzioni ────────────────────────────────────────────────────────────────
 
-# 📍 Parametri
-echo -e "\n🔍  \e[1;33mSTEP 0:\e[0m Verifico modalità di esecuzione: \e[1;32m$1\e[0m"
-if [[ "$1" != "-dev" && "$1" != "-prod" ]]; then
-  echo "❌ Uso corretto: $0 -dev|-prod <percorso_progetto>"
-  exit 1
-fi
-MODE=${1#-}
-shift
+require_root() {
+  if [[ $EUID -ne 0 ]]; then
+    echo "❌ Questo script deve essere eseguito con i permessi di root. Esegui con sudo."
+    exec sudo "$0" "$@"
+  fi
+}
 
-# Verifica se è stato specificato un progetto
-if [ -z "$1" ]; then
-  echo "❌ Specificare nome progetto"
-  exit 1
-else
-  PROJECT="$1"
-  echo -e "\n  ➤  Progetto specificato: \e[1;32m$PROJECT\e[0m"
-  shift
-fi 
-
-SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
-PROJECT_PATH=$(realpath "$PROJECT")
-
-# Controlli preliminari sull’input
-if [ ! -d "$PROJECT_PATH" ]; then
-  echo "❌ La cartella del progetto non esiste: $PROJECT_PATH"
-  exit 1
-fi
-
-# Ora cerchiamo la cartella _backend per verificare la presenza di composer.json
-echo -e "\n🔍  \e[1;33mSTEP 1:\e[0m Cerco cartella *_backend in $PROJECT_PATH"
-BACKEND_DIR=$(find "$PROJECT_PATH" -maxdepth 1 -type d -name "*_backend")
-
-if [ -n "$BACKEND_DIR" ]; then
-  PROJECT_NAME=$(basename "$BACKEND_DIR" | cut -d'_' -f1)
-else
-  echo "❌ Nessuna cartella *_backend trovata in $PROJECT_PATH"
-  exit 1
-fi
-
-# Riepilogo
-echo -e "\nℹ️   \e[1;32mRiepilogo del progetto\e[0m\n"
-echo -e "  ➤  Modalità di deploy: \e[1;33m$MODE\e[0m"
-echo -e "  ➤  Nome progetto:      \e[1;33m$PROJECT_NAME\e[0m"
-echo -e "  ➤  Percorso progetto:  \e[1;33m$PROJECT_PATH\e[0m"
-echo -e "  ➤  Backend trovato:    \e[1;33m$BACKEND_DIR\e[0m"
-
-# Verifica che il progetto Laravel (composer.json) sia presente nella cartella _backend
-echo -e "\n🔍  \e[1;33mSTEP 2:\e[0m Verifico presenza composer.json in $BACKEND_DIR"
-if [ ! -f "$BACKEND_DIR/composer.json" ]; then
-  echo "❌ Non sembra un progetto Laravel (manca composer.json) in $BACKEND_DIR"
-  exit 1
-fi
-
-# Conferma per procedere
-read -rp $'\n\e[1;33m⚠️   Confermi di procedere con il deploy? [\e[1;32my/\e[1;31mN\e[0m] (default N): ' CONFIRM
-CONFIRM=${CONFIRM:-n}
-CONFIRM=${CONFIRM,,}
-if [[ "$CONFIRM" != "y" ]]; then
-  echo "⏹️  Operazione annullata"
-  exit 1
-fi
-
-IS_MAIN_FILE="$SCRIPT_DIR/deploy/is_main.env"
-if [[ -f "$IS_MAIN_FILE" ]]; then
-  source "$IS_MAIN_FILE"
-  IS_MAIN=${IS_MAIN,,}
-fi
-
-if [[ "$IS_MAIN" != "y" && "$IS_MAIN" != "n" ]]; then
-  read -rp $'\n\e[1;33m📌  È il progetto principale? [\e[1;32my/\e[1;31mN\e[0m] (default N): ' IS_MAIN
-  IS_MAIN=${IS_MAIN:-n}
-  IS_MAIN=${IS_MAIN,,}
-  if [[ "$IS_MAIN" != "y" && "$IS_MAIN" != "n" ]]; then
-    echo "❌  Risposta non valida, deve essere 'y' o 'n'"
+parse_args() {
+  echo -e "\n🔍  \e[1;33mSTEP 0:\e[0m Verifico parametri"
+  if [[ "${1:-}" != "-dev" && "${1:-}" != "-prod" ]]; then
+    echo "❌ Uso corretto: $0 -dev|-prod <percorso_progetto>"
     exit 1
   fi
-  echo "IS_MAIN=$IS_MAIN" > "$IS_MAIN_FILE"
-fi
+  MODE=${1#-}; shift
+  if [ -z "${1:-}" ]; then
+    echo "❌ Specificare nome progetto"
+    exit 1
+  fi
+  PROJECT="$1"; shift
 
-if [[ "$IS_MAIN" == "y" ]]; then
-  sudo rm -rf "$SCRIPT_DIR/deploy/www/wwwroot/$MODE/apps"
-  BASE_DIR="$SCRIPT_DIR/deploy/www/wwwroot/$MODE/$PROJECT_NAME"
-else
-  BASE_DIR="$SCRIPT_DIR/deploy/www/wwwroot/$MODE/apps/$PROJECT_NAME"
-fi
+  SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+  PROJECT_PATH=$(realpath "$PROJECT")
+}
 
-BACKEND_DEST="$BASE_DIR/backend"
+step1_verify_project() {
+  echo -e "\n🔍  \e[1;33mSTEP 1:\e[0m Verifico cartella progetto"
+  if [ ! -d "$PROJECT_PATH" ]; then
+    echo "❌ La cartella del progetto non esiste: $PROJECT_PATH"
+    exit 1
+  fi
+}
 
-# Copia sorgente
-echo -e "\n⚙️   \e[1;33mSTEP 3:\e[0m Deploy backend: \e[1;32m$PROJECT_NAME\e[0m -> \e[1;32m$BACKEND_DEST\e[0m"
-rm -rf "$BACKEND_DEST"
-mkdir -p "$BACKEND_DEST"
-rsync -a --exclude .env --exclude vendor "$BACKEND_DIR"/ "$BACKEND_DEST"/
+step2_detect_backend_dir() {
+  echo -e "\n🔍  \e[1;33mSTEP 2:\e[0m Cerco cartella *_backend"
+  BACKEND_DIR=$(find "$PROJECT_PATH" -maxdepth 1 -type d -name "*_backend" | head -n1)
+  if [ -z "$BACKEND_DIR" ]; then
+    echo "❌ Nessuna cartella *_backend trovata in $PROJECT_PATH"
+    exit 1
+  fi
+  PROJECT_NAME=$(basename "$BACKEND_DIR" | cut -d'_' -f1)
+}
 
-echo -e "\n🔧  \e[1;33mSTEP 3.1:\e[0m Copia file di configurazione"
-if [ -f "$BACKEND_DIR/.env.prod" ] && [[ "$MODE" == "prod" ]]; then
-  cp "$BACKEND_DIR/.env.prod" "$BACKEND_DEST/.env"
-elif [ -f "$BACKEND_DIR/.env.example" ]; then
-  cp "$BACKEND_DIR/.env.example" "$BACKEND_DEST/.env"
-fi
+step3_show_summary() {
+  echo -e "\nℹ️   \e[1;32mRiepilogo del progetto\e[0m"
+  echo -e "  ➤ Modalità di deploy: \e[1;33m$MODE\e[0m"
+  echo -e "  ➤ Nome progetto:      \e[1;33m$PROJECT_NAME\e[0m"
+  echo -e "  ➤ Percorso progetto:  \e[1;33m$PROJECT_PATH\e[0m"
+  echo -e "  ➤ Backend trovato:    \e[1;33m$BACKEND_DIR\e[0m"
+}
 
-echo -e "\n📦  \e[1;33mSTEP 3.2:\e[0m Installazione dipendenze Laravel e generazione chiave applicativa"
-cd "$BACKEND_DEST"
-composer install --no-dev --optimize-autoloader --no-interaction
-php artisan key:generate --ansi --quiet
+step4_confirm_deploy() {
+  read -rp $'\n⚠️   Confermi di procedere con il deploy? [y/N]: ' CONFIRM
+  CONFIRM=${CONFIRM:-n}; CONFIRM=${CONFIRM,,}
+  if [[ "$CONFIRM" != "y" ]]; then
+    echo "⏹️  Operazione annullata"
+    exit 1
+  fi
+}
 
-echo -e "\n🔐   \e[1;33mSTEP 3.3:\e[0m Imposto permessi su storage e bootstrap/cache"
-chown -R www:www storage bootstrap/cache
-chmod -R 775 storage bootstrap/cache
+step5_detect_main() {
+  IS_MAIN_FILE="$SCRIPT_DIR/deploy/is_main.env"
+  IS_MAIN="n"
+  if [[ -f "$IS_MAIN_FILE" ]]; then
+    source "$IS_MAIN_FILE"
+    IS_MAIN=${IS_MAIN,,}
+  fi
+  if [[ "$IS_MAIN" != "y" && "$IS_MAIN" != "n" ]]; then
+    read -rp $'\n📌  È il progetto principale? [y/N]: ' IS_MAIN
+    IS_MAIN=${IS_MAIN:-n}; IS_MAIN=${IS_MAIN,,}
+    if [[ "$IS_MAIN" != "y" && "$IS_MAIN" != "n" ]]; then
+      echo "❌ Risposta non valida"
+      exit 1
+    fi
+    echo "IS_MAIN=$IS_MAIN" > "$IS_MAIN_FILE"
+  fi
+}
 
-echo -e "\n✅   Backend pronto in \e[1;32m$BACKEND_DEST\e[0m"
+step6_prepare_base_dir() {
+  if [[ "$IS_MAIN" == "y" ]]; then
+    BASE_DIR="$SCRIPT_DIR/deploy/www/wwwroot/$MODE/$PROJECT_NAME"
+  else
+    BASE_DIR="$SCRIPT_DIR/deploy/www/wwwroot/$MODE/apps/$PROJECT_NAME"
+  fi
+  BACKEND_DEST="$BASE_DIR/backend"
+  echo -e "\n⚙️   \e[1;33mSTEP 3:\e[0m Deploy backend in \e[1;32m$BACKEND_DEST\e[0m"
+  rm -rf "$BACKEND_DEST"
+  mkdir -p "$BACKEND_DEST"
+}
+
+step7_copy_source() {
+  rsync -a --exclude .env --exclude vendor "$BACKEND_DIR"/ "$BACKEND_DEST"/
+}
+
+step8_copy_env() {
+  echo -e "\n🔧  \e[1;33mSTEP 3.1:\e[0m Copia file di configurazione"
+  if [[ -f "$BACKEND_DIR/.env.prod" && "$MODE" == "prod" ]]; then
+    cp "$BACKEND_DIR/.env.prod" "$BACKEND_DEST/.env"
+  elif [[ -f "$BACKEND_DIR/.env.example" ]]; then
+    cp "$BACKEND_DIR/.env.example" "$BACKEND_DEST/.env"
+  fi
+}
+
+step9_install_dependencies() {
+  echo -e "\n📦  \e[1;33mSTEP 3.2:\e[0m Installazione dipendenze e key generation"
+  pushd "$BACKEND_DEST" >/dev/null
+  composer install --no-dev --optimize-autoloader --no-interaction
+  php artisan key:generate --ansi --quiet
+  popd >/dev/null
+}
+
+step10_set_permissions() {
+  echo -e "\n🔐   \e[1;33mSTEP 3.3:\e[0m Imposto permessi"
+  chown -R www:www "$BACKEND_DEST/storage" "$BACKEND_DEST/bootstrap/cache"
+  chmod -R 775 "$BACKEND_DEST/storage" "$BACKEND_DEST/bootstrap/cache"
+}
+
+step11_summary() {
+  echo -e "\n✅   \e[1;32mBackend pronto in $BACKEND_DEST\e[0m"
+}
+
+# ─── Main ───────────────────────────────────────────────────────────────────
+
+require_root "$@"
+parse_args "$@"
+step1_verify_project
+step2_detect_backend_dir
+step3_show_summary
+step4_confirm_deploy
+step5_detect_main
+step6_prepare_base_dir
+step7_copy_source
+step8_copy_env
+step9_install_dependencies
+step10_set_permissions
+step11_summary

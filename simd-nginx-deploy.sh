@@ -21,16 +21,15 @@ step0_parse_args() {
     echo "❌ Uso corretto: $0 -dev|-prod <percorso_progetto>"
     exit 1
   fi
-  MODE=${1#-}
-  shift
+  MODE=${1#-}; shift
   if [ -z "${1:-}" ]; then
     echo "❌ Specificare nome progetto"
     exit 1
   fi
-  PROJECT="$1"
-  shift
+  PROJECT="$1"; shift
 
   SCRIPT_DIR=$(readlink -f "$(dirname "$0")")
+  SIM_ROOT="$SCRIPT_DIR/deploy"
   PROJECT_PATH=$(readlink -f "$PROJECT")
 }
 
@@ -43,7 +42,7 @@ step1_verify_project() {
   FRONTEND_DIR=$(find "$PROJECT_PATH" -maxdepth 1 -type d -name "*_frontend" | head -n1)
   BACKEND_DIR=$(find "$PROJECT_PATH" -maxdepth 1 -type d -name "*_backend"  | head -n1)
   if [ -z "$FRONTEND_DIR" ] || [ -z "$BACKEND_DIR" ]; then
-    echo "❌ Mancano *_frontend o *_backend"
+    echo "❌ Mancano le cartelle *_frontend o *_backend"
     exit 1
   fi
   PROJECT_NAME=$(basename "$FRONTEND_DIR" | cut -d'_' -f1)
@@ -51,7 +50,7 @@ step1_verify_project() {
 
 step2_load_ports_php() {
   echo -e "\n📥  \e[1;32m[SIM]\e[0m \e[1;33mSTEP 2:\e[0m Carico porte e PHP-FPM socket"
-  PORTS_FILE="$SCRIPT_DIR/deploy/assigned_ports.env"
+  PORTS_FILE="$SIM_ROOT/assigned_ports.env"
   if [ ! -f "$PORTS_FILE" ]; then
     echo "❌ File porte non trovato: $PORTS_FILE"
     exit 1
@@ -69,19 +68,30 @@ step2_load_ports_php() {
 
 step3_setup_simulation() {
   echo -e "\n🔌  \e[1;32m[SIM]\e[0m \e[1;33mSTEP 3:\e[0m Preparo simulation dirs"
-  DEPLOY_ROOT="$SCRIPT_DIR/deploy"
-  WWWROOT="/www/wwwroot/$MODE"
-  WWWLOGS="/www/wwwlogs/$MODE"
-  NGINX_CONF_PATH="/www/server/nginx/conf/nginx.conf"
-  SITES_AVAIL="/www/server/nginx/conf/sites-available/$MODE"
+  # radice simulazione
+  SIM_WWWROOT="$SIM_ROOT/www/wwwroot/$MODE"
+  SIM_WWWLOGS="$SIM_ROOT/www/wwwlogs/$MODE"
+  SIM_NGINX_CONF="$SIM_ROOT/www/server/nginx/conf"
+  CONF_D="$SIM_NGINX_CONF/conf.d"
+  SITES_AVAIL="$CONF_D/sites-available/$MODE"
+  SITES_ENABLED="$CONF_D/sites-enabled/$MODE"
 
-  mkdir -p "$DEPLOY_ROOT$SITES_AVAIL"
-  echo "  ➕ $DEPLOY_ROOT$SITES_AVAIL"
+  echo "  ➕ Creo dirs simulate:"
+  echo "     $SIM_WWWROOT"
+  echo "     $SIM_WWWLOGS"
+  echo "     $SIM_NGINX_CONF"
+  echo "     $CONF_D"
+  echo "     $SITES_AVAIL"
+  echo "     $SITES_ENABLED"
 
-  if [ ! -f "$DEPLOY_ROOT$NGINX_CONF_PATH" ]; then
-    echo "  ➕ Creo nginx.conf simulato"
-    mkdir -p "$(dirname "$DEPLOY_ROOT$NGINX_CONF_PATH")"
-    cat > "$DEPLOY_ROOT$NGINX_CONF_PATH" <<'EOF'
+  mkdir -p "$SIM_WWWROOT" "$SIM_WWWLOGS" "$SIM_NGINX_CONF" \
+           "$CONF_D" "$SITES_AVAIL" "$SITES_ENABLED"
+
+  # nginx.conf simulato
+  SIM_NGINX_MAIN="$SIM_NGINX_CONF/nginx.conf"
+  if [ ! -f "$SIM_NGINX_MAIN" ]; then
+    echo "  ➕ Creo nginx.conf simulato: $SIM_NGINX_MAIN"
+    cat > "$SIM_NGINX_MAIN" <<'EOF'
 user  www www;
 worker_processes auto;
 pid   /www/server/nginx/logs/nginx.pid;
@@ -93,40 +103,40 @@ events {
 }
 
 http {
-    include mime.types;
-    include proxy.conf;
-    default_type application/octet-stream;
-    sendfile on;
+    include       mime.types;
+    include       proxy.conf;
+    default_type  application/octet-stream;
+    sendfile       on;
     keepalive_timeout 65;
     client_max_body_size 50m;
-    gzip on;
-    gzip_types text/plain text/css application/json application/javascript;
-    ssl_protocols TLSv1.2 TLSv1.3;
+    gzip           on;
+    gzip_types     text/plain text/css application/json application/javascript;
+
+    ssl_protocols             TLSv1.2 TLSv1.3;
     ssl_prefer_server_ciphers on;
-    ssl_ciphers 'ECDHE-ECDSA-CHACHA20-POLY1305:...';
+    ssl_ciphers               'ECDHE-ECDSA-CHACHA20-POLY1305:...';
 
     include conf.d/*.conf;
-    include sites-enabled/$MODE/*.conf;
-    include /www/server/panel/vhost/nginx/$MODE/*.conf;
+    include conf.d/sites-enabled/*/*.conf;
 }
 
 stream {
-    log_format tcp '$time_local|$remote_addr|$protocol|$status|$bytes_sent|$bytes_received|$session_time';
-    access_log /www/wwwlogs/tcp-access.log tcp;
-    error_log /www/wwwlogs/tcp-error.log;
+    log_format tcp_format '$time_local|$remote_addr|$protocol|$status|$bytes_sent|$bytes_received|$session_time';
+    access_log /www/wwwlogs/tcp-access.log tcp_format;
+    error_log  /www/wwwlogs/tcp-error.log;
     include /www/server/panel/vhost/nginx/tcp/*.conf;
 }
 EOF
   else
-    echo "  ✅ nginx.conf simulato esiste"
+    echo "  ✅ nginx.conf simulato già esistente: $SIM_NGINX_MAIN"
   fi
 }
 
 step4_detect_type() {
   echo -e "\n📌  \e[1;32m[SIM]\e[0m \e[1;33mSTEP 4:\e[0m Tipo di progetto"
   IS_MAIN="n"; VALID=false
-  if [ -f "$SCRIPT_DIR/deploy/is_main.env" ]; then
-    source "$SCRIPT_DIR/deploy/is_main.env"
+  if [ -f "$SIM_ROOT/is_main.env" ]; then
+    source "$SIM_ROOT/is_main.env"
     IS_MAIN=${IS_MAIN,,}
     [[ "$IS_MAIN" == "y" || "$IS_MAIN" == "n" ]] && VALID=true
   fi
@@ -137,26 +147,21 @@ step4_detect_type() {
       echo "❌ Risposta non valida"
       exit 1
     fi
-    echo "IS_MAIN=$IS_MAIN" > "$SCRIPT_DIR/deploy/is_main.env"
+    echo "IS_MAIN=$IS_MAIN" > "$SIM_ROOT/is_main.env"
   fi
 
   if [[ "$IS_MAIN" == "y" ]]; then
     REL_PATH="$PROJECT_NAME"
-    VHOST_SUB=""
+    VHOST_SUBDIR=""
   else
     REL_PATH="apps/$PROJECT_NAME"
-    VHOST_SUB="/apps"
+    VHOST_SUBDIR="/apps"
   fi
 }
 
 step5_generate_vhost() {
   echo -e "\n📂  \e[1;32m[SIM]\e[0m \e[1;33mSTEP 5:\e[0m Generazione VHOST"
-  # se non main, aggiungo “/apps” al path
-  if [[ "$IS_MAIN" == "y" ]]; then
-    VHOST_DIR="$DEPLOY_ROOT$SITES_AVAIL"
-  else
-    VHOST_DIR="$DEPLOY_ROOT$SITES_AVAIL/apps"
-  fi
+  VHOST_DIR="$SITES_AVAIL$VHOST_SUBDIR"
   mkdir -p "$VHOST_DIR"
   VHOST_FILE="$VHOST_DIR/${PROJECT_NAME}.conf"
 
@@ -165,11 +170,11 @@ server {
   listen       $FRONT_PORT;
   listen       [::]:$FRONT_PORT;
   server_name  _;
-  access_log   $WWWLOGS/$REL_PATH/${PROJECT_NAME}_front_access.log;
-  error_log    $WWWLOGS/$REL_PATH/${PROJECT_NAME}_front_error.log;
+  access_log   $SIM_WWWLOGS/$REL_PATH/${PROJECT_NAME}_front_access.log;
+  error_log    $SIM_WWWLOGS/$REL_PATH/${PROJECT_NAME}_front_error.log;
 
-  root         $WWWROOT/$REL_PATH/frontend/browser;
-  index        index.html;
+  root   $SIM_WWWROOT/$REL_PATH/frontend/browser;
+  index  index.html;
 
   location / {
     try_files \$uri \$uri/ /index.html;
@@ -180,7 +185,7 @@ server {
   listen       $BACK_PORT;
   listen       [::]:$BACK_PORT;
   server_name  _;
-  root         $WWWROOT/$REL_PATH/backend/public;
+  root         $SIM_WWWROOT/$REL_PATH/backend/public;
   index        index.php;
 
   location / {
@@ -195,41 +200,49 @@ server {
 
   location ~ /\\.(?!well-known).* { deny all; }
 
-  access_log   $WWWLOGS/$REL_PATH/${PROJECT_NAME}_api_access.log;
-  error_log    $WWWLOGS/$REL_PATH/${PROJECT_NAME}_api_error.log;
+  access_log   $SIM_WWWLOGS/$REL_PATH/${PROJECT_NAME}_api_access.log;
+  error_log    $SIM_WWWLOGS/$REL_PATH/${PROJECT_NAME}_api_error.log;
 }
 EOF
+
   echo "  ➕ VHOST creato: $VHOST_FILE"
 }
 
-
 step6_setup_logs() {
-  echo -e "\n🗂️   \e[1;33mSTEP 6:\e[0m Configuro log"
-  LOG_DIR="$SCRIPT_DIR/deploy/www/wwwlogs/$MODE/$REL_PATH"
-  mkdir -p "$LOG_DIR" && echo "  ➕ Dir log: $LOG_DIR"
-  for t in front_access front_error api_access api_error; do
-    f="$LOG_DIR/${PROJECT_NAME}_${t}.log"
-    if [ ! -f "$f" ]; then
-      touch "$f" && echo "  ➕ Creo: $f"
+  echo -e "\n🗂️   \e[1;33mSTEP 6:\e[0m Creazione directory e file di log (simulazione)"
+  LOG_DIR="$SIM_WWWLOGS/$REL_PATH"
+  mkdir -p "$LOG_DIR"
+  echo "  ➕ Directory log: $LOG_DIR"
+  for f in front_access front_error api_access api_error; do
+    FILE="$LOG_DIR/${PROJECT_NAME}_${f}.log"
+    if [ ! -f "$FILE" ]; then
+      touch "$FILE"
+      echo "  ➕ Creo file log: $FILE"
     else
-      echo "  ✅ Esiste: $f"
+      echo "  ✅ File log già presente: $FILE"
     fi
   done
 }
 
 step7_summary() {
-  echo -e "\nℹ️   \e[1;33mSTEP 7:\e[0m Riepilogo"
+  echo -e "\nℹ️   \e[1;33mSTEP 7:\e[0m Riepilogo simulazione"
   cat <<EOF
-  Modalità:        $MODE
-  Progetto:        $PROJECT_PATH
-  Nome:            $PROJECT_NAME
-  PATH deploy:     $SCRIPT_DIR/deploy
-  WWWROOT:         /www/wwwroot/$MODE/$REL_PATH
-  Log dir:         /www/wwwlogs/$MODE/$REL_PATH
-  Front port:      $FRONT_PORT
-  Back port:       $BACK_PORT
+  ➤ Modalità:         $MODE
+  ➤ Progetto:         $PROJECT_PATH
+  ➤ Nome progetto:    $PROJECT_NAME
+  ➤ SCRIPT_DIR:       $SCRIPT_DIR
+  ➤ SIM_ROOT:         $SIM_ROOT
+  ➤ WWWROOT (sim):    $SIM_WWWROOT
+  ➤ WWWLOGS (sim):    $SIM_WWWLOGS
+  ➤ nginx.conf (sim): $SIM_NGINX_CONF/nginx.conf
+  ➤ conf.d:           $CONF_D
+  ➤ sites-available:  $SITES_AVAIL
+  ➤ sites-enabled:    $SITES_ENABLED
+  ➤ VHOST file:       $VHOST_FILE
+  ➤ FRONT_PORT:       $FRONT_PORT
+  ➤ BACK_PORT:        $BACK_PORT
 EOF
-  echo -e "\n✅ Simulazione completa in $SCRIPT_DIR/deploy/www/nginx/conf/sites-available/$MODE$VHOST_SUB"
+  echo -e "\n✅  Simulazione completa: i file sono pronti in $SIM_NGINX_CONF"
 }
 
 # ─── Main ───────────────────────────────────────────────────────────────────
