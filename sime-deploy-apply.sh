@@ -77,7 +77,6 @@ sync_nginx_conf() {
   SRC_CONF_D="$CONF_SRC/conf.d"
   DST_CONF_D="$CONF_DEST/conf.d"
 
-  # Ricreo tutto conf.d
   sudo rm -rf "$DST_CONF_D"
   sudo mkdir -p "$DST_CONF_D"
   sudo cp -rv "$SRC_CONF_D/"* "$DST_CONF_D"/
@@ -96,13 +95,20 @@ copy_main_conf() {
 
 update_vhost_symlink() {
   echo -e "\n🔗  \e[1;33mSTEP 6:\e[0m Aggiorno symlink VHOST"
-  SA="$CONF_DEST/sites-available/$MODE/$VHOST_SUBDIR"
-  SE="$CONF_DEST/sites-enabled/$MODE/$VHOST_SUBDIR"
-  SA_CONF="$SA/$PROJECT_NAME.conf"
-  [[ ! -f "$SA_CONF" ]] && { echo "❌ Configurazione mancante: $SA_CONF"; exit 1; }
-  mkdir -p "$SE"
-  ln -sf "$SA_CONF" "$SE/$PROJECT_NAME.conf"
-  echo "    ➤ Symlink: $SE/$PROJECT_NAME.conf → $SA_CONF"
+  local BASE="$CONF_DEST/conf.d"
+  local SUB="${VHOST_SUBDIR#/}"
+  local SA_DIR="$BASE/sites-available/$MODE${SUB:+/$SUB}"
+  local SE_DIR="$BASE/sites-enabled/$MODE${SUB:+/$SUB}"
+  local SA_CONF="$SA_DIR/${PROJECT_NAME}.conf"
+
+  if [[ ! -f "$SA_CONF" ]]; then
+    echo "❌ Configurazione mancante: $SA_CONF"
+    exit 1
+  fi
+
+  mkdir -p "$SE_DIR"
+  ln -sf "$SA_CONF" "$SE_DIR/${PROJECT_NAME}.conf"
+  echo "    ➤ Symlink creato: $SE_DIR/${PROJECT_NAME}.conf → $SA_CONF"
 }
 
 deploy_project() {
@@ -124,8 +130,8 @@ deploy_project() {
 
 copy_env() {
   echo -e "\n🗝️   \e[1;33mSTEP 8:\e[0m Copio .env del backend"
-  ENV_SRC="$PROJECT_SRC/backend/.env"
-  ENV_DEST="$PROJECT_DEST/backend/.env"
+  local ENV_SRC="$PROJECT_SRC/backend/.env"
+  local ENV_DEST="$PROJECT_DEST/backend/.env"
   if [[ -f "$ENV_SRC" ]]; then
     cp -v "$ENV_SRC" "$ENV_DEST"
   else
@@ -135,17 +141,15 @@ copy_env() {
 
 copy_logs() {
   echo -e "\n📤  \e[1;33mSTEP 9:\e[0m Copio file di log"
-
-  # Se il progetto è sotto apps/, i log stanno in wwwlogs/.../apps/<PROJECT_NAME>
+  # Se progetto secondario
   if [[ -d "$LOGS_SRC/apps/$PROJECT_NAME" ]]; then
     SRC_LOG_DIR="$LOGS_SRC/apps/$PROJECT_NAME"
+    DEST_LOG_DIR="$LOGS_DEST/apps/$PROJECT_NAME"
   else
     SRC_LOG_DIR="$LOGS_SRC/$PROJECT_NAME"
+    DEST_LOG_DIR="$LOGS_DEST/$PROJECT_NAME"
   fi
 
-  DEST_LOG_DIR="$LOGS_DEST/$PROJECT_NAME"
-
-  # Ricreo la destinazione da zero
   rm -rf "$DEST_LOG_DIR"
   mkdir -p "$DEST_LOG_DIR"
   echo "    ➤ Src logs: $SRC_LOG_DIR"
@@ -169,10 +173,13 @@ test_nginx_conf() {
 
 reload_nginx() {
   echo -e "\n🔁  \e[1;33mSTEP 11:\e[0m Ricarico o avvio NGINX"
-  if lsof -i :80 -sTCP:LISTEN &>/dev/null; then
-    sudo systemctl restart aapanel
+  if sudo lsof -i :80 -sTCP:LISTEN >/dev/null; then
+    sudo /www/server/nginx/sbin/nginx -s reload || {
+      sudo pkill nginx
+      sudo /www/server/nginx/sbin/nginx
+    }
   else
-    nginx
+    sudo /www/server/nginx/sbin/nginx
   fi
 }
 
