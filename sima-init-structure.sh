@@ -89,10 +89,23 @@ echo -e "  ➕ $WWWLOGS"
 
 # --- 📂 STEP 4.1: Creo struttura progetto se specificato ---
 if [ -n "$PROJECT_NAME" ]; then
+  # Carica e valida la risposta precedente se presente
+IS_MAIN_FILE="$SCRIPT_DIR/deploy/is_main.env"
+if [[ -f "$IS_MAIN_FILE" ]]; then
+  source "$IS_MAIN_FILE"
+  IS_MAIN=${IS_MAIN,,}
+fi
 
+if [[ "$IS_MAIN" != "y" && "$IS_MAIN" != "n" ]]; then
   read -rp $'\n\e[1;33m📌  È il progetto principale? [\e[1;32my/\e[1;31mN\e[0m] (default N): ' IS_MAIN
-  IS_MAIN=${IS_MAIN:-n}     # default n
-  IS_MAIN=${IS_MAIN,,}      # lowercase
+  IS_MAIN=${IS_MAIN:-n}
+  IS_MAIN=${IS_MAIN,,}
+  if [[ "$IS_MAIN" != "y" && "$IS_MAIN" != "n" ]]; then
+    echo "❌  Risposta non valida, deve essere 'y' o 'n'"
+    exit 1
+  fi
+  echo "IS_MAIN=$IS_MAIN" > "$IS_MAIN_FILE"
+fi
 
   LOGS="$WWWLOGS/$PROJECT_NAME"
 

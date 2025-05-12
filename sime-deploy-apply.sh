@@ -73,8 +73,12 @@ for dir in conf.d snippets "sites-available/$MODE"; do
 done
 
 # ─── STEP 5: Copio nginx.conf ───
-echo -e "\n📄  \e[1;33mSTEP 5:\e[0m Copio nginx.conf principale"
-[[ -f "$CONF_SRC/nginx.conf" ]] && sudo cp -v "$CONF_SRC/nginx.conf" "$CONF_DEST/nginx.conf"
+echo -e "\n📄  \e[1;33mSTEP 5:\e[0m Copio nginx.conf principale solo se non esiste già"
+if [[ -f "$CONF_SRC/nginx.conf" && ! -f "$CONF_DEST/nginx.conf" ]]; then
+  sudo cp -v "$CONF_SRC/nginx.conf" "$CONF_DEST/nginx.conf"
+else
+  echo "⚠️  $CONF_DEST/nginx.conf già presente, salto copia"
+fi
 
 # ─── STEP 6: Aggiorno symlink VHOST ───
 echo -e "\n🔗  \e[1;33mSTEP 6:\e[0m Aggiorno symlink VHOST"

@@ -221,8 +221,43 @@ server {
 EOF
 
 # Determina se il progetto è sotto "apps"
-if [[ -d "$DEPLOY_ROOT$WWWROOT/apps/$PROJECT_NAME" ]]; then
+# 📌 STEP 4.1: Determina se è il progetto principale
+VALID_MAIN=false
+if [ -f "$SCRIPT_DIR/deploy/is_main.env" ]; then
+  source "$SCRIPT_DIR/deploy/is_main.env"
+  IS_MAIN=${IS_MAIN,,}
+  if [[ "$IS_MAIN" == "y" || "$IS_MAIN" == "n" ]]; then
+    VALID_MAIN=true
+  fi
+fi
+
+if [ "$VALID_MAIN" = false ]; then
+  read -rp $'\n\e[1;33m📌  È il progetto principale? [\e[1;32my/\e[1;31mN\e[0m] (default N): ' IS_MAIN
+  IS_MAIN=${IS_MAIN:-n}
+  IS_MAIN=${IS_MAIN,,}
+  if [[ "$IS_MAIN" != "y" && "$IS_MAIN" != "n" ]]; then
+    echo -e "\n❌  \e[1;33mSTEP 4.1:\e[0m Risposta non valida, deve essere '\''y'\'' o '\''n'\''"
+    exit 1
+  fi
+  echo "IS_MAIN=$IS_MAIN" > "$SCRIPT_DIR/deploy/is_main.env"
+fi
+
+if [[ "$IS_MAIN" == "y" ]]; then
+  # progetto principale
+  REL_PATH="$PROJECT_NAME"
+  FRONT_ROOT="  root   $WWWROOT/$REL_PATH/frontend/browser;
+  index  index.html;"
+  FRONT_LOC=$(cat <<EOF
+
+  location / {
+    try_files \$uri \$uri/ /index.html;
+  }
+EOF
+)
+else
+  # progetto sotto apps
   REL_PATH="apps/$PROJECT_NAME"
+  FRONT_ROOT=""
   FRONT_LOC=$(cat <<EOF
   # redirect /$REL_PATH → /$REL_PATH/
   location = /$REL_PATH {
@@ -234,17 +269,6 @@ if [[ -d "$DEPLOY_ROOT$WWWROOT/apps/$PROJECT_NAME" ]]; then
     alias $WWWROOT/$REL_PATH/frontend/browser/;
     index index.html;
     try_files \$uri \$uri/ /$REL_PATH/index.html;
-  }
-EOF
-)
-else
-  REL_PATH="$PROJECT_NAME"
-  FRONT_ROOT="  root   $WWWROOT/$REL_PATH/frontend/browser;
-  index  index.html;"
-  FRONT_LOC=$(cat <<EOF
-
-  location / {
-    try_files \$uri \$uri/ /index.html;
   }
 EOF
 )
