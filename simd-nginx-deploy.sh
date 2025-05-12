@@ -109,7 +109,7 @@ pid        /www/server/nginx/logs/nginx.pid;
 error_log  /www/server/nginx/logs/error.log crit;
 
 events {
-    worker_connections 51200;
+    worker_connections 10240;
     use                epoll;
 }
 
