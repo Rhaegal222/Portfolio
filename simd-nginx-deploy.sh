@@ -95,43 +95,103 @@ generate_main_nginx_conf() {
   cat > "$SIM_NGINX_CONF/nginx.conf" <<'EOF'
 user  www www;
 worker_processes auto;
+error_log  /www/wwwlogs/nginx/nginx_error.log  crit;
 pid        /www/server/nginx/logs/nginx.pid;
-error_log  /www/server/nginx/logs/error.log crit;
-
-events {
-    worker_connections 51200;
-    use                epoll;
-}
-
-http {
-    include       mime.types;
-    include       proxy.conf;
-    lua_package_path "/www/server/nginx/lib/lua/?.lua;;";
-
-    default_type  application/octet-stream;
-    sendfile       on;
-    tcp_nopush     on;
-    tcp_nodelay    on;
-    keepalive_timeout 65;
-    client_max_body_size 50m;
-
-    gzip on;
-    gzip_types text/plain text/css application/json application/javascript;
-
-    ssl_protocols       TLSv1.2 TLSv1.3;
-    ssl_prefer_server_ciphers on;
-    ssl_ciphers         'ECDHE-ECDSA-CHACHA20-POLY1305:...';
-
-    include conf.d/*.conf;
-    include conf.d/sites-enabled/*/*.conf;
-    include conf.d/sites-available/*/*.conf;
-}
+worker_rlimit_nofile 51200;
 
 stream {
-    log_format tcp_format '$time_local|$remote_addr|$protocol|$status|$bytes_sent|$bytes_received|$session_time';
-    access_log /www/wwwlogs/tcp-access.log tcp_format;
-    error_log  /www/wwwlogs/tcp-error.log;
+    log_format tcp_format '$time_local|$remote_addr|$protocol|$status|$bytes_sent|$bytes_received|$session_time|$upstream_addr|$upstream_bytes_sent|$upstream_bytes_received|$upstream_connect_time';
+  
+    access_log /www/wwwlogs/nginx/tcp-access.log tcp_format;
+    error_log /www/wwwlogs/nginx/tcp-error.log;
     include /www/server/panel/vhost/nginx/tcp/*.conf;
+}
+
+events
+    {
+        use epoll;
+        worker_connections 51200;
+        multi_accept on;
+    }
+
+http
+    {
+        include       mime.types;
+		#include luawaf.conf;
+
+		include proxy.conf;
+        lua_package_path "/www/server/nginx/lib/lua/?.lua;;";
+
+        default_type  application/octet-stream;
+
+        server_names_hash_bucket_size 512;
+        client_header_buffer_size 32k;
+        large_client_header_buffers 4 32k;
+        client_max_body_size 50m;
+
+        sendfile   on;
+        tcp_nopush on;
+
+        keepalive_timeout 60;
+
+        tcp_nodelay on;
+
+        fastcgi_connect_timeout 300;
+        fastcgi_send_timeout 300;
+        fastcgi_read_timeout 300;
+        fastcgi_buffer_size 64k;
+        fastcgi_buffers 4 64k;
+        fastcgi_busy_buffers_size 128k;
+        fastcgi_temp_file_write_size 256k;
+		fastcgi_intercept_errors on;
+
+        gzip on;
+        gzip_min_length  1k;
+        gzip_buffers     4 16k;
+        gzip_http_version 1.1;
+        gzip_comp_level 2;
+        gzip_types     text/plain application/javascript application/x-javascript text/javascript text/css application/xml application/json image/jpeg image/gif image/png font/ttf font/otf image/svg+xml application/xml+rss text/x-js;
+        gzip_vary on;
+        gzip_proxied   expired no-cache no-store private auth;
+        gzip_disable   "MSIE [1-6]\.";
+
+        limit_conn_zone $binary_remote_addr zone=perip:10m;
+		limit_conn_zone $server_name zone=perserver:10m;
+
+        server_tokens off;
+        access_log off;
+
+server
+    {
+        listen 888;
+        server_name phpmyadmin;
+        index index.html index.htm index.php;
+        root  /www/server/phpmyadmin;
+
+        #error_page   404   /404.html;
+        include enable-php.conf;
+
+        location ~ .*\.(gif|jpg|jpeg|png|bmp|swf)$
+        {
+            expires      30d;
+        }
+
+        location ~ .*\.(js|css)?$
+        {
+            expires      12h;
+        }
+
+        location ~ /\.
+        {
+            deny all;
+        }
+
+        access_log  /www/wwwlogs/phpmyadmin/access.log;
+    }
+include /www/server/panel/vhost/nginx/*.conf;
+include conf.d/*.conf;
+include conf.d/sites-enabled/*/*.conf;
+include conf.d/sites-available/*/*.conf;
 }
 EOF
 }
