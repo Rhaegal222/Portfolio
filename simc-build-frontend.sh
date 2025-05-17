@@ -121,7 +121,7 @@ load_ports() {
 setup_environments() {
   echo -e "\n🔧  \e[1;33mSTEP 6:\e[0m Genero environment.ts"
   ENV_DIR="$FRONTEND_DIR/src/environments"
-  API_URL="http://localhost:$BACK_PORT/api"
+  API_URL="http://localhost:$BACK_PORT"
   mkdir -p "$ENV_DIR"
 
   cat > "$ENV_DIR/environment.ts" <<EOF
