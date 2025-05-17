@@ -220,7 +220,7 @@ generate_vhost_conf() {
 server {
   listen       $FRONT_PORT;
   listen       [::]:$FRONT_PORT;
-  server_name  _;
+  server_name  ${PROJECT_NAME}_front;
   access_log   /www/wwwlogs/$MODE/$REL_PATH/${PROJECT_NAME}_front_access.log;
   error_log    /www/wwwlogs/$MODE/$REL_PATH/${PROJECT_NAME}_front_error.log;
 
@@ -235,7 +235,7 @@ server {
 server {
   listen       $BACK_PORT;
   listen       [::]:$BACK_PORT;
-  server_name  _;
+  server_name  ${PROJECT_NAME}_back;
   root         /www/wwwroot/$MODE/$REL_PATH/backend/public;
   index        index.php;
 
@@ -263,7 +263,14 @@ EOF
 
 create_log_files() {
   echo -e "\n🗂️   [SIM] STEP 6: Creo file di log"
-  local LOGDIR="$SIM_WWWLOGS/$REL_PATH"
+  # Determina la directory dei log in base a REL_PATH (stessa logica di generate_vhost_conf)
+  local LOGDIR
+  if [[ $REL_PATH == apps/* ]]; then
+    LOGDIR="$SIM_WWWLOGS/apps/$PROJECT_NAME"
+  else
+    LOGDIR="$SIM_WWWLOGS/$PROJECT_NAME"
+  fi
+  echo "  ➕ Log directory: $LOGDIR"
   mkdir -p "$LOGDIR"
   for f in front_access front_error api_access api_error; do
     touch "$LOGDIR/${PROJECT_NAME}_${f}.log"
@@ -277,6 +284,8 @@ print_summary() {
   • Progetto:       $PROJECT_PATH
   • Nome:           $PROJECT_NAME
   • Sim root:       $SIM_ROOT
+  • Sim WWWROOT:    $SIM_WWWROOT
+  • Sim WWWLOGS:    $SIM_WWWLOGS
   • nginx.conf sim: $SIM_NGINX_CONF/nginx.conf
   • vhost sim:      $SIM_SA/${PROJECT_NAME}.conf
   • WWWROOT real:   /www/wwwroot/$MODE/$REL_PATH

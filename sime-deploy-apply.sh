@@ -77,11 +77,10 @@ sync_nginx_conf() {
   SRC_CONF_D="$CONF_SRC/conf.d"
   DST_CONF_D="$CONF_DEST/conf.d"
 
-  sudo rm -rf "$DST_CONF_D"
   sudo mkdir -p "$DST_CONF_D"
-  sudo cp -rv "$SRC_CONF_D/"* "$DST_CONF_D"/
+  sudo rsync -av "$SRC_CONF_D/" "$DST_CONF_D/"
 
-  echo "    ➤ Copiato: $SRC_CONF_D → $DST_CONF_D"
+  echo "    ➤ Copiato/aggiornato: $SRC_CONF_D → $DST_CONF_D"
 }
 
 copy_main_conf() {
@@ -105,7 +104,7 @@ update_vhost_symlink() {
   # se il progetto è sotto apps/, usiamo la sottocartella apps
   if [[ -d "$WWW_DEST/apps/$PROJECT_NAME" ]]; then
     SA_DIR="$SA_BASE/apps"
-    SE_DIR="$SE_BASE/apps"
+    SE_DIR="$SE_BASE"
   else
     SA_DIR="$SA_BASE"
     SE_DIR="$SE_BASE"

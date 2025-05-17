@@ -46,7 +46,7 @@ echo -e "\n⚙️ Genero configurazione NGINX simulata..."
 
 # --- Applicazione della configurazione come reale ---
 echo "🚀 Applico la simulazione come configurazione reale..."
-./sime-deploy-apply.sh -dev
+./sime-deploy-apply.sh -dev "$PROJECT"
 
 # --- Finalizzazione ---
 echo "✅ Deploy completo per '$PROJECT' in ambiente DEV"
