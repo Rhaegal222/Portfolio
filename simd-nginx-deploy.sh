@@ -218,6 +218,30 @@ generate_vhost_conf() {
 
   cat > "$VF" <<EOF
 server {
+    listen       80;
+    listen       [::]:80;
+    server_name  www.wyrmrest.com www.wyrmrest.it;
+
+    location /$REL_PATH/ {
+        proxy_pass         http://127.0.0.1:$FRONT_PORT/;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              \$host;
+        proxy_set_header   X-Real-IP         \$remote_addr;
+        proxy_set_header   X-Forwarded-For   \$proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto \$scheme;
+    }
+
+    location /$REL_PATH/api/ {
+        proxy_pass         http://127.0.0.1:$BACK_PORT/api/;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              \$host;
+        proxy_set_header   X-Real-IP         \$remote_addr;
+        proxy_set_header   X-Forwarded-For   \$proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto \$scheme;
+    }
+}
+
+server {
   listen       $FRONT_PORT;
   listen       [::]:$FRONT_PORT;
   server_name  ${PROJECT_NAME}_front;
@@ -260,6 +284,7 @@ EOF
 
   echo "  ➕ VHOST creato: $VF"
 }
+
 
 create_log_files() {
   echo -e "\n🗂️   [SIM] STEP 6: Creo file di log"

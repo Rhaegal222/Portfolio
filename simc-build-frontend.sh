@@ -131,6 +131,8 @@ export const environment = {
 };
 EOF
 
+  echo -e "\n🔧  \e[1;33mSTEP 6.1:\e[0m Genero environment.ts"
+  API_URL="http://www.wyrmrest.com$BASE_HREF"
   cat > "$ENV_DIR/environment.prod.ts" <<EOF
 export const environment = {
   production: true,
